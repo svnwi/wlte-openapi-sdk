@@ -1,0 +1,48 @@
+meta {
+  name: List Device Profiles
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/wlte/v1/device-profiles
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("code SUCCESS", function() {
+    expect(res.body.code).to.equal("SUCCESS");
+  });
+  test("profiles is array", function() {
+    expect(res.body.data.profiles).to.be.an("array");
+  });
+  test("profile does not expose internal id", function() {
+    const first = res.body.data.profiles[0];
+    if (!first) return;
+    expect(first).to.not.have.property("id");
+  });
+  test("profile does not expose updatedAt", function() {
+    const first = res.body.data.profiles[0];
+    if (!first) return;
+    expect(first).to.not.have.property("updatedAt");
+  });
+  test("profile does not expose sensor operation specs", function() {
+    const first = res.body.data.profiles[0];
+    if (!first || !first.capabilities || !first.capabilities.operationSpecs) return;
+    expect(first.capabilities.operationSpecs).to.not.have.property("sensor");
+  });
+  test("sensorInterfaces use supportedTypes only", function() {
+    const first = res.body.data.profiles[0];
+    if (!first || !first.capabilities || !first.capabilities.sensorInterfaces || !first.capabilities.sensorInterfaces[0]) return;
+    expect(first.capabilities.sensorInterfaces[0]).to.not.have.property("mode");
+    expect(first.capabilities.sensorInterfaces[0].supportedTypes).to.be.an("array");
+  });
+}

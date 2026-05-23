@@ -1,0 +1,640 @@
+openapi: 3.1.0
+info:
+  title: WLTE OpenAPI
+  version: 0.1.0
+  description: HTTP API surface used by the WLTE SDK clients.
+servers:
+  - url: https://openapi.svnwi.com
+    description: WLTE OpenAPI production endpoint.
+security:
+  - bearerAuth: []
+paths:
+  /wlte/v1/auth/token:
+    post:
+      operationId: createAccessToken
+      summary: Create an access token using client credentials.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRequest'
+      responses:
+        '200':
+          description: Access token response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponseEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices:
+    get:
+      operationId: listDevices
+      summary: List devices.
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+      responses:
+        '200':
+          description: Device list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceListEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/device-profiles:
+    get:
+      operationId: listDeviceProfiles
+      summary: List supported device profiles.
+      responses:
+        '200':
+          description: Device profile list response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceProfileListEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}:
+    get:
+      operationId: getDevice
+      summary: Get a device detail, including current peripheral state when available.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/relays/{relayIndex}/commands:
+    post:
+      operationId: createRelayCommand
+      summary: Create a relay command.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/RelayIndex'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelayCommandRequest'
+      responses:
+        '202':
+          description: Relay command accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/commands/{commandId}:
+    get:
+      operationId: getCommandResult
+      summary: Get command result.
+      parameters:
+        - $ref: '#/components/parameters/CommandId'
+      responses:
+        '200':
+          description: Command result response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandResultEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+    PageSize:
+      name: pageSize
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+    DeviceId:
+      name: deviceId
+      in: path
+      required: true
+      schema:
+        type: string
+    RelayIndex:
+      name: relayIndex
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
+    CommandId:
+      name: commandId
+      in: path
+      required: true
+      schema:
+        type: string
+  responses:
+    ErrorResponse:
+      description: API error.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+    RateLimitResponse:
+      description: Rate limit error.
+      headers:
+        Retry-After:
+          schema:
+            type: string
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    ApiCode:
+      type: string
+      enum:
+        - SUCCESS
+        - COMMAND_ACCEPTED
+        - AUTH_EXPIRED
+        - AUTH_INVALID
+        - INVALID_REQUEST
+        - DEVICE_OFFLINE
+        - DEVICE_NOT_FOUND
+        - COMMAND_NOT_FOUND
+        - COMMAND_REJECTED
+        - RATE_LIMITED
+        - INTERNAL_ERROR
+    TokenRequest:
+      type: object
+      required:
+        - clientId
+        - clientSecret
+      properties:
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+    TokenResponse:
+      type: object
+      required:
+        - accessToken
+        - tokenType
+        - expiresIn
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          enum:
+            - Bearer
+        expiresIn:
+          type: integer
+          example: 3600
+    Pagination:
+      type: object
+      required:
+        - page
+        - pageSize
+        - total
+        - totalPages
+        - hasNext
+        - hasPrev
+      properties:
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        total:
+          type: integer
+        totalPages:
+          type: integer
+        hasNext:
+          type: boolean
+        hasPrev:
+          type: boolean
+    DeviceStats:
+      type: object
+      required:
+        - total
+        - online
+        - offline
+      properties:
+        total:
+          type: integer
+        online:
+          type: integer
+        offline:
+          type: integer
+    DeviceStatus:
+      type: string
+      enum:
+        - ONLINE
+        - OFFLINE
+    RelayState:
+      type: object
+      required:
+        - index
+      properties:
+        index:
+          type: integer
+        on:
+          type:
+            - boolean
+            - 'null'
+    DigitalInputState:
+      type: object
+      required:
+        - index
+      properties:
+        index:
+          type: integer
+        active:
+          type:
+            - boolean
+            - 'null'
+    AnalogMeasurement:
+      type: object
+      required:
+        - value
+        - unit
+      properties:
+        value:
+          type: number
+        unit:
+          type: string
+    AnalogInputState:
+      type: object
+      required:
+        - index
+        - type
+        - status
+      properties:
+        index:
+          type: integer
+        type:
+          type: string
+        value:
+          type: number
+        unit:
+          type: string
+        status:
+          type: string
+        measurement:
+          $ref: '#/components/schemas/AnalogMeasurement'
+    SensorState:
+      type: object
+      required:
+        - index
+        - type
+        - unit
+        - status
+      properties:
+        index:
+          type: integer
+        type:
+          type: string
+        value:
+          type: number
+        unit:
+          type: string
+        status:
+          type: string
+    SensorInterface:
+      type: object
+      required:
+        - index
+        - supportedTypes
+      properties:
+        index:
+          type: integer
+        supportedTypes:
+          type: array
+          items:
+            type: string
+    RelayOperationSpec:
+      type: object
+      required:
+        - actions
+      properties:
+        actions:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelayAction'
+    OperationSpecs:
+      type: object
+      properties:
+        relay:
+          $ref: '#/components/schemas/RelayOperationSpec'
+    DeviceProfileCapabilities:
+      type: object
+      properties:
+        relayCount:
+          type: integer
+        digitalInputCount:
+          type: integer
+        analogInputCount:
+          type: integer
+        sensorInterfaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/SensorInterface'
+        operationSpecs:
+          $ref: '#/components/schemas/OperationSpecs'
+    DeviceProfile:
+      type: object
+      required:
+        - deviceType
+        - capabilities
+      properties:
+        deviceType:
+          type: string
+        capabilities:
+          $ref: '#/components/schemas/DeviceProfileCapabilities'
+    Peripherals:
+      type: object
+      properties:
+        relays:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelayState'
+        digitalInputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/DigitalInputState'
+        analogInputs:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnalogInputState'
+        sensors:
+          type: array
+          items:
+            $ref: '#/components/schemas/SensorState'
+    Device:
+      type: object
+      required:
+        - deviceId
+        - name
+        - status
+      properties:
+        deviceId:
+          type: string
+        name:
+          type: string
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+        deviceType:
+          type: string
+        stateUpdatedAt:
+          type: string
+          format: date-time
+        peripherals:
+          $ref: '#/components/schemas/Peripherals'
+    RelayAction:
+      type: string
+      enum:
+        - ON
+        - OFF
+        - JOG
+    RelayCommandRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          $ref: '#/components/schemas/RelayAction'
+    CommandStatus:
+      type: string
+      enum:
+        - SENT
+        - SUCCESS
+        - FAILED
+        - TIMEOUT
+    Command:
+      type: object
+      required:
+        - id
+        - deviceId
+        - relayIndex
+        - action
+      properties:
+        id:
+          type: string
+        deviceId:
+          type: string
+        relayIndex:
+          type: integer
+        action:
+          $ref: '#/components/schemas/RelayAction'
+        status:
+          $ref: '#/components/schemas/CommandStatus'
+        createdAt:
+          type: string
+          format: date-time
+    CommandResult:
+      allOf:
+        - $ref: '#/components/schemas/Command'
+        - type: object
+          required:
+            - status
+            - createdAt
+    ErrorEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+      properties:
+        code:
+          $ref: '#/components/schemas/ApiCode'
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          type:
+            - object
+            - array
+            - string
+            - number
+            - boolean
+            - 'null'
+    TokenResponseEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/TokenResponse'
+    DeviceList:
+      type: object
+      required:
+        - devices
+        - stats
+        - pagination
+      properties:
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/Device'
+        stats:
+          $ref: '#/components/schemas/DeviceStats'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+    DeviceListEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/DeviceList'
+    DeviceProfileList:
+      type: object
+      required:
+        - profiles
+      properties:
+        profiles:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeviceProfile'
+    DeviceProfileListEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/DeviceProfileList'
+    DeviceEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/Device'
+    CommandEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - COMMAND_ACCEPTED
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/Command'
+    CommandResultEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/CommandResult'

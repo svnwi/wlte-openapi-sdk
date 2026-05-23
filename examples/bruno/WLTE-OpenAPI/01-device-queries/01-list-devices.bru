@@ -1,0 +1,55 @@
+meta {
+  name: List Devices
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/wlte/v1/devices
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data && res.body.data.devices && res.body.data.devices.length > 0) {
+    bru.setEnvVar("deviceId", res.body.data.devices[0].deviceId);
+  }
+}
+
+tests {
+  test("HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("code SUCCESS", function() {
+    expect(res.body.code).to.equal("SUCCESS");
+  });
+  test("devices is array", function() {
+    expect(res.body.data.devices).to.be.an("array");
+  });
+  test("stats shape", function() {
+    const s = res.body.data.stats;
+    expect(s).to.be.an("object");
+    expect(s.total).to.be.a("number");
+    expect(s.online).to.be.a("number");
+    expect(s.offline).to.be.a("number");
+  });
+  test("pagination shape", function() {
+    const p = res.body.data.pagination;
+    expect(p.page).to.be.a("number");
+    expect(p.pageSize).to.be.a("number");
+    expect(p.total).to.be.a("number");
+    expect(p.hasNext).to.be.a("boolean");
+    expect(p.hasPrev).to.be.a("boolean");
+  });
+  test("each device has required fields", function() {
+    res.body.data.devices.forEach(function(d) {
+      expect(d.deviceId).to.be.a("string").and.not.empty;
+      expect(d.name).to.be.a("string");
+      expect(d.status).to.be.oneOf(["ONLINE", "OFFLINE"]);
+    });
+  });
+}

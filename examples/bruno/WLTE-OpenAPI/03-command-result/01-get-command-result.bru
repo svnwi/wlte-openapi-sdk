@@ -1,0 +1,52 @@
+meta {
+  name: Get Command Result
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/wlte/v1/commands/{{commandId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("HTTP 200 or 404", function() {
+    expect([200, 404]).to.include(res.status);
+  });
+  test("code is expected", function() {
+    if (res.status === 200) {
+      expect(res.body.code).to.equal("SUCCESS");
+    } else {
+      expect(res.body.code).to.equal("COMMAND_NOT_FOUND");
+    }
+  });
+  test("id present", function() {
+    if (res.status !== 200) return;
+    expect(res.body.data.id).to.be.a("string").and.not.empty;
+  });
+  test("deviceId present", function() {
+    if (res.status !== 200) return;
+    expect(res.body.data.deviceId).to.be.a("string").and.not.empty;
+  });
+  test("relayIndex is number", function() {
+    if (res.status !== 200) return;
+    expect(res.body.data.relayIndex).to.be.a("number");
+  });
+  test("action is uppercase", function() {
+    if (res.status !== 200) return;
+    expect(res.body.data.action).to.be.oneOf(["ON", "OFF", "JOG"]);
+  });
+  test("status is known value", function() {
+    if (res.status !== 200) return;
+    expect(res.body.data.status).to.be.oneOf(["SENT", "SUCCESS", "FAILED", "TIMEOUT"]);
+  });
+  test("createdAt present", function() {
+    if (res.status !== 200) return;
+    expect(res.body.data.createdAt).to.be.a("string").and.not.empty;
+  });
+}

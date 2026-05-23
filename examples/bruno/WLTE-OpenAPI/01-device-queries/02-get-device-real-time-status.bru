@@ -1,0 +1,45 @@
+meta {
+  name: Get Device Real-Time Status
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/wlte/v1/devices/{{deviceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("code SUCCESS", function() {
+    expect(res.body.code).to.equal("SUCCESS");
+  });
+  test("deviceId matches", function() {
+    expect(res.body.data.deviceId).to.equal(bru.getEnvVar("deviceId"));
+  });
+  test("name is string", function() {
+    expect(res.body.data.name).to.be.a("string");
+  });
+  test("status is ONLINE or OFFLINE", function() {
+    expect(res.body.data.status).to.be.oneOf(["ONLINE", "OFFLINE"]);
+  });
+  test("deviceType is string", function() {
+    expect(res.body.data.deviceType).to.be.a("string").and.not.empty;
+  });
+  test("stateUpdatedAt is string", function() {
+    expect(res.body.data.stateUpdatedAt).to.be.a("string");
+  });
+  test("peripherals is object or absent", function() {
+    if (res.body.data.peripherals !== undefined) {
+      expect(res.body.data.peripherals).to.be.an("object");
+      expect(res.body.data).to.not.have.property("io");
+    }
+  });
+}

@@ -1,0 +1,50 @@
+meta {
+  name: Auth
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/wlte/v1/auth/token
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "clientId": "{{clientId}}",
+    "clientSecret": "{{clientSecret}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data && res.body.data.accessToken) {
+    bru.setEnvVar("accessToken", res.body.data.accessToken);
+  }
+}
+
+tests {
+  test("HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("code SUCCESS", function() {
+    expect(res.body.code).to.equal("SUCCESS");
+  });
+  test("accessToken present", function() {
+    expect(res.body.data.accessToken).to.be.a("string").and.not.empty;
+  });
+  test("tokenType Bearer", function() {
+    expect(res.body.data.tokenType).to.equal("Bearer");
+  });
+  test("expiresIn is 3600", function() {
+    expect(res.body.data.expiresIn).to.equal(3600);
+  });
+  test("requestId present", function() {
+    expect(res.body.requestId).to.be.a("string").and.not.empty;
+  });
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

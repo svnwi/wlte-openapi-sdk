@@ -1,0 +1,42 @@
+meta {
+  name: Jog Relay
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/wlte/v1/devices/{{deviceId}}/relays/{{relayIndex}}/commands
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Idempotency-Key: guide-jog-{{$randomInt}}
+}
+
+body:json {
+  {
+    "action": "JOG"
+  }
+}
+
+script:post-response {
+  if (res.status === 202 && res.body.data && res.body.data.id) {
+    bru.setEnvVar("commandId", res.body.data.id);
+  }
+}
+
+tests {
+  test("accepted or known non-fatal code", function() {
+    if (res.status === 202) {
+      expect(res.body.code).to.equal("COMMAND_ACCEPTED");
+      expect(res.body.data.id).to.be.a("string").and.not.empty;
+      expect(res.body.data.action).to.equal("JOG");
+      expect(res.body.data.relayIndex).to.be.a("number");
+    } else {
+      const known = ["DEVICE_OFFLINE", "DEVICE_NOT_FOUND", "RATE_LIMITED", "COMMAND_REJECTED"];
+      expect(known).to.include(res.body.code);
+    }
+  });
+}

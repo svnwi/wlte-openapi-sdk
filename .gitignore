@@ -1,0 +1,15 @@
+node_modules/
+dist/
+__pycache__/
+.pytest_cache/
+.venv/
+.env
+.env.local
+*.pyc
+*.egg-info/
+.DS_Store
+.env
+# OpenAPI Generator outputs
+sdk/typescript/generated/
+sdk/python/generated/
+sdk/go/generated/

@@ -1,0 +1,33 @@
+{
+  "name": "wlte-openapi-typescript-local",
+  "version": "0.1.0",
+  "description": "WLTE OpenAPI TypeScript SDK",
+  "author": "SVNWI <support@svnwi.com>",
+  "private": true,
+  "license": "Apache-2.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "example:list-devices": "node --env-file=.env --import=tsx examples/list-devices.ts",
+    "example:list-profiles": "node --env-file=.env --import=tsx examples/list-profiles.ts",
+    "example:get-device": "node --env-file=.env --import=tsx examples/get-device.ts",
+    "example:control-relay": "node --env-file=.env --import=tsx examples/control-relay.ts",
+    "test": "vitest run --no-cache",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.7"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
