@@ -13,3 +13,6 @@ __pycache__/
 sdk/typescript/generated/
 sdk/python/generated/
 sdk/go/generated/
+
+# Bruno local environments and copied local files
+examples/bruno/**/environments/*.local.bru

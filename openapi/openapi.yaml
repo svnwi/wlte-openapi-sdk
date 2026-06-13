@@ -85,6 +85,25 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/config:
+    get:
+      operationId: getDeviceConfig
+      summary: Get device configuration, including relay jog time and RS485 baud rate when available.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device configuration response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceConfigEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
   /wlte/v1/devices/{deviceId}/relays/{relayIndex}/commands:
     post:
       operationId: createRelayCommand
@@ -92,11 +111,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/DeviceId'
         - $ref: '#/components/parameters/RelayIndex'
-        - name: Idempotency-Key
-          in: header
-          required: false
-          schema:
-            type: string
+        - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
         content:
@@ -106,6 +121,97 @@ paths:
       responses:
         '202':
           description: Relay command accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/relays/{relayIndex}/jog-config:
+    put:
+      operationId: setRelayJogConfig
+      summary: Set relay jog time.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/RelayIndex'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RelayJogConfigRequest'
+      responses:
+        '202':
+          description: Relay jog time command accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/rs485/transceive:
+    post:
+      operationId: transceiveRS485
+      summary: Send an RS485 passthrough request.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RS485TransceiveRequest'
+      responses:
+        '202':
+          description: RS485 command accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommandEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/rs485/baud-rate:
+    put:
+      operationId: setRS485BaudRate
+      summary: Set RS485 baud rate.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RS485BaudRateRequest'
+      responses:
+        '202':
+          description: RS485 baud rate command accepted.
           content:
             application/json:
               schema:
@@ -174,6 +280,12 @@ components:
       schema:
         type: integer
         minimum: 1
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
     CommandId:
       name: commandId
       in: path
@@ -417,6 +529,45 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SensorState'
+    RelayChannelConfig:
+      type: object
+      required:
+        - index
+        - jogTimeSeconds
+      properties:
+        index:
+          type: integer
+        jogTimeSeconds:
+          type: number
+          description: Relay jog time in seconds.
+    RelayConfig:
+      type: object
+      properties:
+        channels:
+          type: array
+          items:
+            $ref: '#/components/schemas/RelayChannelConfig'
+    RS485Config:
+      type: object
+      properties:
+        baudRate:
+          type: integer
+          minimum: 1
+          maximum: 65535
+    DeviceConfig:
+      type: object
+      required:
+        - deviceId
+      properties:
+        deviceId:
+          type: string
+        relay:
+          $ref: '#/components/schemas/RelayConfig'
+        rs485:
+          $ref: '#/components/schemas/RS485Config'
+        updatedAt:
+          type: string
+          format: date-time
     Device:
       type: object
       required:
@@ -450,6 +601,35 @@ components:
       properties:
         action:
           $ref: '#/components/schemas/RelayAction'
+    RelayJogConfigRequest:
+      type: object
+      required:
+        - durationSec
+      properties:
+        durationSec:
+          type: integer
+          minimum: 1
+          maximum: 8000
+          description: Relay jog time in seconds.
+    RS485TransceiveRequest:
+      type: object
+      required:
+        - requestHex
+      properties:
+        requestHex:
+          type: string
+          pattern: '^[0-9A-Fa-f]+$'
+          description: RS485 request bytes encoded as hexadecimal. The current maximum is 30 bytes.
+          example: 02060034000109F7
+    RS485BaudRateRequest:
+      type: object
+      required:
+        - baudRate
+      properties:
+        baudRate:
+          type: integer
+          minimum: 1
+          maximum: 65535
     CommandStatus:
       type: string
       enum:
@@ -457,24 +637,62 @@ components:
         - SUCCESS
         - FAILED
         - TIMEOUT
+    CommandType:
+      type: string
+      enum:
+        - RELAY_SET
+        - RS485_TRANSCEIVE
+        - RS485_BAUD_RATE_SET
+        - RELAY_JOG_CONFIG_SET
+    RS485TransceiveResult:
+      type: object
+      properties:
+        responseHex:
+          type: string
+          description: RS485 response bytes encoded as hexadecimal, when a response is available.
+    RS485BaudRateResult:
+      type: object
+      properties:
+        baudRate:
+          type: integer
+          minimum: 1
+          maximum: 65535
+    RelayJogConfigResult:
+      type: object
+      properties:
+        relayIndex:
+          type: integer
+          minimum: 1
+        durationSec:
+          type: number
+          minimum: 1
+    CommandResultData:
+      oneOf:
+        - $ref: '#/components/schemas/RS485TransceiveResult'
+        - $ref: '#/components/schemas/RS485BaudRateResult'
+        - $ref: '#/components/schemas/RelayJogConfigResult'
     Command:
       type: object
       required:
         - id
         - deviceId
-        - relayIndex
-        - action
+        - status
+        - createdAt
       properties:
         id:
           type: string
         deviceId:
           type: string
+        type:
+          $ref: '#/components/schemas/CommandType'
         relayIndex:
           type: integer
         action:
           $ref: '#/components/schemas/RelayAction'
         status:
           $ref: '#/components/schemas/CommandStatus'
+        result:
+          $ref: '#/components/schemas/CommandResultData'
         createdAt:
           type: string
           format: date-time
@@ -602,6 +820,24 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/Device'
+    DeviceConfigEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/DeviceConfig'
     CommandEnvelope:
       type: object
       required:

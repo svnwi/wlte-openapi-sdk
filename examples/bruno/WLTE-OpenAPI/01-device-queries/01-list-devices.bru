@@ -16,7 +16,13 @@ headers {
 
 script:post-response {
   if (res.status === 200 && res.body.data && res.body.data.devices && res.body.data.devices.length > 0) {
-    bru.setEnvVar("deviceId", res.body.data.devices[0].deviceId);
+    const firstDeviceId = res.body.data.devices[0].deviceId;
+    bru.setEnvVar("deviceId", firstDeviceId);
+
+    const currentRS485DeviceId = String(bru.getEnvVar("rs485DeviceId") || "");
+    if (!currentRS485DeviceId || currentRS485DeviceId === "your_rs485_device_id") {
+      bru.setEnvVar("rs485DeviceId", firstDeviceId);
+    }
   }
 }
 

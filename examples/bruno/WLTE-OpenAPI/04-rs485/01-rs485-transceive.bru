@@ -1,0 +1,48 @@
+meta {
+  name: RS485 Transceive
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/wlte/v1/devices/{{rs485DeviceId}}/rs485/transceive
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Idempotency-Key: guide-rs485-{{$randomInt}}
+}
+
+body:json {
+  {
+    "requestHex": "{{rs485RequestHex}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 202 && res.body.data && res.body.data.id) {
+    bru.setEnvVar("commandId", res.body.data.id);
+  }
+}
+
+tests {
+  test("accepted or known non-fatal code", function() {
+    if (res.status === 202) {
+      expect(res.body.code).to.equal("COMMAND_ACCEPTED");
+      expect(res.body.data.id).to.be.a("string").and.not.empty;
+      expect(res.body.data.deviceId).to.equal(bru.getEnvVar("rs485DeviceId"));
+      expect(res.body.data.type).to.equal("RS485_TRANSCEIVE");
+      if (res.body.data.result !== undefined) {
+        expect(res.body.data.result).to.be.an("object");
+        if (res.body.data.result.responseHex !== undefined) {
+          expect(res.body.data.result.responseHex).to.be.a("string").and.not.empty;
+        }
+      }
+    } else {
+      const known = ["AUTH_SCOPE_DENIED", "DEVICE_OFFLINE", "DEVICE_NOT_FOUND", "RATE_LIMITED", "COMMAND_REJECTED", "GATEWAY_UNAVAILABLE"];
+      expect(known).to.include(res.body.code);
+    }
+  });
+}

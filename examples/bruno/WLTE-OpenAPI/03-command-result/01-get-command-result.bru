@@ -33,13 +33,18 @@ tests {
     if (res.status !== 200) return;
     expect(res.body.data.deviceId).to.be.a("string").and.not.empty;
   });
-  test("relayIndex is number", function() {
+  test("command type shape", function() {
     if (res.status !== 200) return;
-    expect(res.body.data.relayIndex).to.be.a("number");
-  });
-  test("action is uppercase", function() {
-    if (res.status !== 200) return;
-    expect(res.body.data.action).to.be.oneOf(["ON", "OFF", "JOG"]);
+    const d = res.body.data;
+    if (d.type === undefined || d.type === "RELAY_SET") {
+      expect(d.relayIndex).to.be.a("number");
+      expect(d.action).to.be.oneOf(["ON", "OFF", "JOG"]);
+      return;
+    }
+    expect(d.type).to.be.oneOf(["RS485_TRANSCEIVE", "RS485_BAUD_RATE_SET", "RELAY_JOG_CONFIG_SET"]);
+    if (d.result !== undefined) {
+      expect(d.result).to.be.an("object");
+    }
   });
   test("status is known value", function() {
     if (res.status !== 200) return;

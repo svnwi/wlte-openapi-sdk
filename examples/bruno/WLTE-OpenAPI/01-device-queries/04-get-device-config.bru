@@ -1,0 +1,39 @@
+meta {
+  name: Get Device Config
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/wlte/v1/devices/{{rs485DeviceId}}/config
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+}
+
+tests {
+  test("HTTP 200", function() {
+    expect(res.status).to.equal(200);
+  });
+  test("code SUCCESS", function() {
+    expect(res.body.code).to.equal("SUCCESS");
+  });
+  test("deviceId matches", function() {
+    expect(res.body.data.deviceId).to.equal(bru.getEnvVar("rs485DeviceId"));
+  });
+  test("relay jog config shape if present", function() {
+    if (!res.body.data.relay || !res.body.data.relay.channels) return;
+    expect(res.body.data.relay.channels).to.be.an("array");
+    res.body.data.relay.channels.forEach(function(ch) {
+      expect(ch.index).to.be.a("number");
+      expect(ch.jogTimeSeconds).to.be.a("number");
+    });
+  });
+  test("rs485 config shape if present", function() {
+    if (!res.body.data.rs485) return;
+    expect(res.body.data.rs485.baudRate).to.be.a("number");
+  });
+}

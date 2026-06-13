@@ -1,0 +1,42 @@
+meta {
+  name: Set Relay Jog Time
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/wlte/v1/devices/{{deviceId}}/relays/{{relayIndex}}/jog-config
+  body: json
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{accessToken}}
+  Idempotency-Key: guide-jog-config-{{$randomInt}}
+}
+
+body:json {
+  {
+    "durationSec": {{jogTimeSeconds}}
+  }
+}
+
+script:post-response {
+  if (res.status === 202 && res.body.data && res.body.data.id) {
+    bru.setEnvVar("commandId", res.body.data.id);
+  }
+}
+
+tests {
+  test("accepted or known non-fatal code", function() {
+    if (res.status === 202) {
+      expect(res.body.code).to.equal("COMMAND_ACCEPTED");
+      expect(res.body.data.id).to.be.a("string").and.not.empty;
+      expect(res.body.data.deviceId).to.equal(bru.getEnvVar("deviceId"));
+      expect(res.body.data.relayIndex).to.equal(Number(bru.getEnvVar("relayIndex")));
+    } else {
+      const known = ["AUTH_SCOPE_DENIED", "DEVICE_OFFLINE", "DEVICE_NOT_FOUND", "RATE_LIMITED", "COMMAND_REJECTED", "GATEWAY_UNAVAILABLE"];
+      expect(known).to.include(res.body.code);
+    }
+  });
+}
