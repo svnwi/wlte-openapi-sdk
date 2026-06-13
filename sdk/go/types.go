@@ -1,6 +1,9 @@
 package wlteopenapi
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 type Envelope[T any] struct {
 	Code      string `json:"code"`
@@ -84,6 +87,25 @@ type DeviceList struct {
 	Pagination Pagination  `json:"pagination"`
 }
 
+type RelayChannelConfig struct {
+	Index          int `json:"index"`
+	JogTimeSeconds int `json:"jogTimeSeconds,omitempty"`
+}
+
+type RelayConfig struct {
+	Channels []RelayChannelConfig `json:"channels"`
+}
+
+type RS485Config struct {
+	BaudRate int `json:"baudRate,omitempty"`
+}
+
+type DeviceConfig struct {
+	Relay     *RelayConfig `json:"relay,omitempty"`
+	RS485     *RS485Config `json:"rs485,omitempty"`
+	UpdatedAt string       `json:"updatedAt,omitempty"`
+}
+
 type SensorInterface struct {
 	Index          int      `json:"index"`
 	SupportedTypes []string `json:"supportedTypes"`
@@ -136,16 +158,41 @@ const (
 	CommandStatusTimeout CommandStatus = "TIMEOUT"
 )
 
+type CommandType string
+
+const (
+	CommandTypeRelaySet          CommandType = "RELAY_SET"
+	CommandTypeRS485Transceive   CommandType = "RS485_TRANSCEIVE"
+	CommandTypeRS485BaudRateSet  CommandType = "RS485_BAUD_RATE_SET"
+	CommandTypeRelayJogConfigSet CommandType = "RELAY_JOG_CONFIG_SET"
+)
+
 type Command struct {
-	ID         string        `json:"id"`
-	DeviceID   string        `json:"deviceId"`
-	RelayIndex int           `json:"relayIndex"`
-	Action     RelayAction   `json:"action"`
-	Status     CommandStatus `json:"status,omitempty"`
-	CreatedAt  *time.Time    `json:"createdAt,omitempty"`
+	ID         string          `json:"id"`
+	DeviceID   string          `json:"deviceId"`
+	Type       CommandType     `json:"type,omitempty"`
+	RelayIndex int             `json:"relayIndex,omitempty"`
+	Action     RelayAction     `json:"action,omitempty"`
+	Status     CommandStatus   `json:"status,omitempty"`
+	Result     json.RawMessage `json:"result,omitempty"`
+	CreatedAt  *time.Time      `json:"createdAt,omitempty"`
 }
 
 type CommandResult = Command
+
+type RS485TransceiveResult struct {
+	RequestHex  string `json:"requestHex"`
+	ResponseHex string `json:"responseHex,omitempty"`
+}
+
+type RS485BaudRateResult struct {
+	BaudRate int `json:"baudRate"`
+}
+
+type RelayJogConfigResult struct {
+	RelayIndex  int `json:"relayIndex"`
+	DurationSec int `json:"durationSec"`
+}
 
 type RelaySetOptions struct {
 	Index          int
@@ -155,5 +202,21 @@ type RelaySetOptions struct {
 
 type RelayJogOptions struct {
 	Index          int
+	IdempotencyKey string
+}
+
+type RelayJogConfigOptions struct {
+	Index          int
+	DurationSec    int
+	IdempotencyKey string
+}
+
+type RS485TransceiveOptions struct {
+	RequestHex     string
+	IdempotencyKey string
+}
+
+type RS485BaudRateOptions struct {
+	BaudRate       int
 	IdempotencyKey string
 }

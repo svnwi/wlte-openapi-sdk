@@ -1,5 +1,5 @@
 import type { WlteClient } from './client.js'
-import type { ApiEnvelope, Device, DeviceList, ListDevicesOptions } from './types.js'
+import type { ApiEnvelope, Device, DeviceConfig, DeviceList, ListDevicesOptions } from './types.js'
 
 export class DevicesApi {
   constructor(private readonly client: WlteClient) {}
@@ -16,6 +16,13 @@ export class DevicesApi {
 
   async get(deviceId: string): Promise<Device> {
     const response = await this.client.request<ApiEnvelope<Device>>(`/wlte/v1/devices/${encodeURIComponent(deviceId)}`)
+    return response.data
+  }
+
+  async getConfig(deviceId: string): Promise<DeviceConfig> {
+    const response = await this.client.request<ApiEnvelope<DeviceConfig>>(
+      `/wlte/v1/devices/${encodeURIComponent(deviceId)}/config`,
+    )
     return response.data
   }
 }

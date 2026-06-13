@@ -37,6 +37,20 @@ func (s *RelaysService) Jog(ctx context.Context, deviceID string, options RelayJ
 	return result, err
 }
 
+func (s *RelaysService) SetJogConfig(ctx context.Context, deviceID string, options RelayJogConfigOptions) (Command, error) {
+	var result Command
+	err := s.client.request(
+		ctx,
+		"PUT",
+		fmt.Sprintf("/wlte/v1/devices/%s/relays/%d/jog-config", urlEscape(deviceID), options.Index),
+		nil,
+		map[string]string{"Idempotency-Key": options.IdempotencyKey},
+		map[string]int{"durationSec": options.DurationSec},
+		&result,
+	)
+	return result, err
+}
+
 func relayActionForBool(on bool) RelayAction {
 	if on {
 		return RelayActionOn

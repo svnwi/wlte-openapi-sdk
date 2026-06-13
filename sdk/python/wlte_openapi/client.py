@@ -12,6 +12,7 @@ from .devices import DevicesApi
 from .errors import WlteApiError, is_auth_expired
 from .profiles import ProfilesApi
 from .relays import RelaysApi
+from .rs485 import RS485Api
 
 DEFAULT_BASE_URL = "https://openapi.svnwi.com"
 SUCCESS_CODES = {"SUCCESS", "COMMAND_ACCEPTED", "OK"}
@@ -83,6 +84,7 @@ class WlteClient:
         self.profiles = ProfilesApi(self)
         self.relays = RelaysApi(self)
         self.commands = CommandsApi(self)
+        self.rs485 = RS485Api(self)
 
     def request(
         self,

@@ -203,3 +203,154 @@ func TestListProfiles(t *testing.T) {
 		t.Fatalf("unexpected profile type: %s", result.Profiles[0].DeviceType)
 	}
 }
+
+func TestGetDeviceConfig(t *testing.T) {
+	var configURL string
+	client, err := NewClient(ClientOptions{
+		ClientID:     "client",
+		ClientSecret: "secret",
+		BaseURL:      "https://api.test",
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/wlte/v1/auth/token" {
+					return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
+				}
+				configURL = req.URL.String()
+				return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"relay":{"channels":[{"index":1,"jogTimeSeconds":2}]},"rs485":{"baudRate":9600}}}`, nil), nil
+			}),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	config, err := client.Devices.GetConfig(context.Background(), "device-1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if config.Relay == nil || config.Relay.Channels[0].JogTimeSeconds != 2 {
+		t.Fatalf("unexpected config: %+v", config)
+	}
+	if configURL != "https://api.test/wlte/v1/devices/device-1/config" {
+		t.Fatalf("unexpected url: %s", configURL)
+	}
+}
+
+func TestRelaySetJogConfig(t *testing.T) {
+	var commandURL string
+	var commandBody string
+	var idemKey string
+	client, err := NewClient(ClientOptions{
+		ClientID:     "client",
+		ClientSecret: "secret",
+		BaseURL:      "https://api.test",
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/wlte/v1/auth/token" {
+					return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
+				}
+				commandURL = req.URL.String()
+				idemKey = req.Header.Get("Idempotency-Key")
+				payload, _ := io.ReadAll(req.Body)
+				commandBody = string(payload)
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-1","deviceId":"device-1","type":"RELAY_JOG_CONFIG_SET","result":{"relayIndex":1,"durationSec":2}}}`, nil), nil
+			}),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	command, err := client.Relays.SetJogConfig(context.Background(), "device-1", RelayJogConfigOptions{Index: 1, DurationSec: 2, IdempotencyKey: "idem-jog"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if command.Type != CommandTypeRelayJogConfigSet {
+		t.Fatalf("unexpected command type: %s", command.Type)
+	}
+	if commandURL != "https://api.test/wlte/v1/devices/device-1/relays/1/jog-config" {
+		t.Fatalf("unexpected url: %s", commandURL)
+	}
+	if commandBody != `{"durationSec":2}` {
+		t.Fatalf("unexpected body: %s", commandBody)
+	}
+	if idemKey != "idem-jog" {
+		t.Fatalf("unexpected idempotency key: %s", idemKey)
+	}
+}
+
+func TestRS485Transceive(t *testing.T) {
+	var commandURL string
+	var commandBody string
+	client, err := NewClient(ClientOptions{
+		ClientID:     "client",
+		ClientSecret: "secret",
+		BaseURL:      "https://api.test",
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/wlte/v1/auth/token" {
+					return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
+				}
+				commandURL = req.URL.String()
+				payload, _ := io.ReadAll(req.Body)
+				commandBody = string(payload)
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-485","deviceId":"device-1","type":"RS485_TRANSCEIVE","result":{"requestHex":"020600340000C837"}}}`, nil), nil
+			}),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	command, err := client.RS485.Transceive(context.Background(), "device-1", RS485TransceiveOptions{RequestHex: "020600340000C837", IdempotencyKey: "idem-485"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if command.Type != CommandTypeRS485Transceive {
+		t.Fatalf("unexpected command type: %s", command.Type)
+	}
+	if commandURL != "https://api.test/wlte/v1/devices/device-1/rs485/transceive" {
+		t.Fatalf("unexpected url: %s", commandURL)
+	}
+	if commandBody != `{"requestHex":"020600340000C837"}` {
+		t.Fatalf("unexpected body: %s", commandBody)
+	}
+}
+
+func TestRS485SetBaudRate(t *testing.T) {
+	var commandURL string
+	var commandBody string
+	client, err := NewClient(ClientOptions{
+		ClientID:     "client",
+		ClientSecret: "secret",
+		BaseURL:      "https://api.test",
+		HTTPClient: &http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				if req.URL.Path == "/wlte/v1/auth/token" {
+					return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
+				}
+				commandURL = req.URL.String()
+				payload, _ := io.ReadAll(req.Body)
+				commandBody = string(payload)
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-baud","deviceId":"device-1","type":"RS485_BAUD_RATE_SET","result":{"baudRate":9600}}}`, nil), nil
+			}),
+		},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	command, err := client.RS485.SetBaudRate(context.Background(), "device-1", RS485BaudRateOptions{BaudRate: 9600, IdempotencyKey: "idem-baud"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if command.Type != CommandTypeRS485BaudRateSet {
+		t.Fatalf("unexpected command type: %s", command.Type)
+	}
+	if commandURL != "https://api.test/wlte/v1/devices/device-1/rs485/baud-rate" {
+		t.Fatalf("unexpected url: %s", commandURL)
+	}
+	if commandBody != `{"baudRate":9600}` {
+		t.Fatalf("unexpected body: %s", commandBody)
+	}
+}

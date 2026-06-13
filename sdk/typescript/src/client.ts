@@ -4,6 +4,7 @@ import { CommandsApi } from './commands.js'
 import { DevicesApi } from './devices.js'
 import { ProfilesApi } from './profiles.js'
 import { RelaysApi } from './relays.js'
+import { RS485Api } from './rs485.js'
 import type { ApiEnvelope, RequestOptions, WlteClientOptions } from './types.js'
 
 const DEFAULT_BASE_URL = 'https://openapi.svnwi.com'
@@ -14,6 +15,7 @@ export class WlteClient {
   readonly profiles: ProfilesApi
   readonly relays: RelaysApi
   readonly commands: CommandsApi
+  readonly rs485: RS485Api
 
   private readonly baseUrl: string
   private readonly fetchImpl: typeof fetch
@@ -41,6 +43,7 @@ export class WlteClient {
     this.profiles = new ProfilesApi(this)
     this.relays = new RelaysApi(this)
     this.commands = new CommandsApi(this)
+    this.rs485 = new RS485Api(this)
   }
 
   async request<T>(path: string, options: RequestOptions = {}): Promise<T> {

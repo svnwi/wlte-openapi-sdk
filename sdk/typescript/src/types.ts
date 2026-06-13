@@ -61,6 +61,26 @@ export interface Peripherals {
   sensors?: SensorState[]
 }
 
+export interface DeviceConfig {
+  relay?: RelayConfig
+  rs485?: RS485Config
+  updatedAt?: string
+  [key: string]: unknown
+}
+
+export interface RelayConfig {
+  channels: RelayChannelConfig[]
+}
+
+export interface RelayChannelConfig {
+  index: number
+  jogTimeSeconds?: number
+}
+
+export interface RS485Config {
+  baudRate?: number
+}
+
 export interface DeviceProfile {
   deviceType: string
   capabilities: DeviceProfileCapabilities
@@ -132,15 +152,50 @@ export interface RelayJogOptions {
   idempotencyKey?: string
 }
 
+export interface RelayJogConfigOptions {
+  index: number
+  durationSec: number
+  idempotencyKey?: string
+}
+
+export interface RS485TransceiveOptions {
+  requestHex: string
+  idempotencyKey?: string
+}
+
+export interface RS485BaudRateOptions {
+  baudRate: number
+  idempotencyKey?: string
+}
+
 export type RelayAction = 'ON' | 'OFF' | 'JOG'
 export type CommandStatus = 'SENT' | 'SUCCESS' | 'FAILED' | 'TIMEOUT'
+export type CommandType = 'RELAY_SET' | 'RS485_TRANSCEIVE' | 'RS485_BAUD_RATE_SET' | 'RELAY_JOG_CONFIG_SET'
+
+export interface RS485TransceiveResult {
+  requestHex: string
+  responseHex?: string
+}
+
+export interface RS485BaudRateResult {
+  baudRate: number
+}
+
+export interface RelayJogConfigResult {
+  relayIndex: number
+  durationSec: number
+}
+
+export type CommandResultData = RS485TransceiveResult | RS485BaudRateResult | RelayJogConfigResult | Record<string, unknown>
 
 export interface Command {
   id: string
   deviceId: string
-  relayIndex: number
-  action: RelayAction
+  type?: CommandType
+  relayIndex?: number
+  action?: RelayAction
   status?: CommandStatus
+  result?: CommandResultData
   createdAt?: string
   [key: string]: unknown
 }

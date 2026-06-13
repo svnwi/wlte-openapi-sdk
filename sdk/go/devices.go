@@ -28,3 +28,9 @@ func (s *DevicesService) Get(ctx context.Context, deviceID string) (Device, erro
 	err := s.client.request(ctx, "GET", "/wlte/v1/devices/"+urlEscape(deviceID), nil, nil, nil, &result)
 	return result, err
 }
+
+func (s *DevicesService) GetConfig(ctx context.Context, deviceID string) (DeviceConfig, error) {
+	var result DeviceConfig
+	err := s.client.request(ctx, "GET", "/wlte/v1/devices/"+urlEscape(deviceID)+"/config", nil, nil, nil, &result)
+	return result, err
+}

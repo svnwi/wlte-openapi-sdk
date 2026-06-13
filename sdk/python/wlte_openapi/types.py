@@ -72,6 +72,25 @@ class DeviceList(TypedDict):
     pagination: Pagination
 
 
+class RelayChannelConfig(TypedDict, total=False):
+    index: int
+    jogTimeSeconds: int
+
+
+class RelayConfig(TypedDict):
+    channels: list[RelayChannelConfig]
+
+
+class RS485Config(TypedDict, total=False):
+    baudRate: int
+
+
+class DeviceConfig(TypedDict, total=False):
+    relay: RelayConfig
+    rs485: RS485Config
+    updatedAt: str
+
+
 class SensorInterface(TypedDict):
     index: int
     supportedTypes: list[str]
@@ -114,18 +133,52 @@ class RelayJogOptions(TypedDict, total=False):
     idempotencyKey: str
 
 
+class RelayJogConfigOptions(TypedDict, total=False):
+    index: int
+    durationSec: int
+    idempotencyKey: str
+
+
+class RS485TransceiveOptions(TypedDict, total=False):
+    requestHex: str
+    idempotencyKey: str
+
+
+class RS485BaudRateOptions(TypedDict, total=False):
+    baudRate: int
+    idempotencyKey: str
+
+
 CommandStatus = Literal["SENT", "SUCCESS", "FAILED", "TIMEOUT"]
 RelayAction = Literal["ON", "OFF", "JOG"]
+CommandType = Literal["RELAY_SET", "RS485_TRANSCEIVE", "RS485_BAUD_RATE_SET", "RELAY_JOG_CONFIG_SET"]
+
+
+class RS485TransceiveResult(TypedDict, total=False):
+    requestHex: str
+    responseHex: str
+
+
+class RS485BaudRateResult(TypedDict):
+    baudRate: int
+
+
+class RelayJogConfigResult(TypedDict):
+    relayIndex: int
+    durationSec: int
 
 
 class Command(TypedDict, total=False):
     id: str
     deviceId: str
+    type: CommandType
     relayIndex: int
     action: RelayAction
     status: CommandStatus
+    result: RS485TransceiveResult | RS485BaudRateResult | RelayJogConfigResult | dict[str, object]
     createdAt: str
 
 
-class CommandResult(Command, total=False):
-    pass
+class CommandResult(Command):
+    status: CommandStatus
+    createdAt: str

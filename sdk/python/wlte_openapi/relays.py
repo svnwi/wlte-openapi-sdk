@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from urllib import parse
 
-from .types import Command, RelayJogOptions, RelaySetOptions
+from .types import Command, RelayJogConfigOptions, RelayJogOptions, RelaySetOptions
 
 
 class RelaysApi:
@@ -24,5 +24,14 @@ class RelaysApi:
             method="POST",
             headers={"Idempotency-Key": options.get("idempotencyKey")},
             body={"action": "JOG"},
+        )
+        return response["data"]
+
+    def set_jog_config(self, device_id: str, options: RelayJogConfigOptions) -> Command:
+        response = self._client.request(
+            f"/wlte/v1/devices/{parse.quote(device_id, safe='')}/relays/{options['index']}/jog-config",
+            method="PUT",
+            headers={"Idempotency-Key": options.get("idempotencyKey")},
+            body={"durationSec": options["durationSec"]},
         )
         return response["data"]

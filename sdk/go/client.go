@@ -37,6 +37,7 @@ type Client struct {
 	Profiles *ProfilesService
 	Relays   *RelaysService
 	Commands *CommandsService
+	RS485    *RS485Service
 }
 
 func NewClient(options ClientOptions) (*Client, error) {
@@ -71,6 +72,7 @@ func NewClient(options ClientOptions) (*Client, error) {
 	client.Profiles = &ProfilesService{client: client}
 	client.Relays = &RelaysService{client: client}
 	client.Commands = &CommandsService{client: client}
+	client.RS485 = &RS485Service{client: client}
 	return client, nil
 }
 

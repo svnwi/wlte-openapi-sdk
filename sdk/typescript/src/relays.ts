@@ -1,5 +1,5 @@
 import type { WlteClient } from './client.js'
-import type { ApiEnvelope, Command, RelayJogOptions, RelaySetOptions } from './types.js'
+import type { ApiEnvelope, Command, RelayJogConfigOptions, RelayJogOptions, RelaySetOptions } from './types.js'
 
 export class RelaysApi {
   constructor(private readonly client: WlteClient) {}
@@ -30,6 +30,22 @@ export class RelaysApi {
         },
         body: {
           action: 'JOG',
+        },
+      },
+    )
+    return response.data
+  }
+
+  async setJogConfig(deviceId: string, options: RelayJogConfigOptions): Promise<Command> {
+    const response = await this.client.request<ApiEnvelope<Command>>(
+      `/wlte/v1/devices/${encodeURIComponent(deviceId)}/relays/${options.index}/jog-config`,
+      {
+        method: 'PUT',
+        headers: {
+          'Idempotency-Key': options.idempotencyKey,
+        },
+        body: {
+          durationSec: options.durationSec,
         },
       },
     )

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from urllib import parse
 
-from .types import Device, DeviceList
+from .types import Device, DeviceConfig, DeviceList
 
 
 class DevicesApi:
@@ -21,4 +21,8 @@ class DevicesApi:
 
     def get(self, device_id: str) -> Device:
         response = self._client.request(f"/wlte/v1/devices/{parse.quote(device_id, safe='')}")
+        return response["data"]
+
+    def get_config(self, device_id: str) -> DeviceConfig:
+        response = self._client.request(f"/wlte/v1/devices/{parse.quote(device_id, safe='')}/config")
         return response["data"]
