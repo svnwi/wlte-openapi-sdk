@@ -2,10 +2,12 @@ export { WlteClient } from './client.js'
 export { WlteApiError } from './errors.js'
 export type {
   Command,
+  CommandDeviceState,
+  CommandExecution,
+  CommandOperation,
   CommandResult,
   CommandResultData,
   CommandStatus,
-  CommandType,
   Device,
   DeviceConfig,
   DeviceList,
@@ -18,6 +20,8 @@ export type {
   Pagination,
   Peripherals,
   RelayChannelConfig,
+  RelayCommand,
+  RelayCommandOptions,
   RelayConfig,
   RelayJogConfigOptions,
   RelayJogConfigResult,
@@ -29,5 +33,6 @@ export type {
   RS485TransceiveOptions,
   RS485TransceiveResult,
   SensorInterface,
+  TokenResponse,
   WlteClientOptions,
 } from './types.js'

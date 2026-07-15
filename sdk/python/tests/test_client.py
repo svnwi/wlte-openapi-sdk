@@ -107,7 +107,21 @@ class WlteClientTest(unittest.TestCase):
                     {
                         "code": "COMMAND_ACCEPTED",
                         "message": "accepted",
-                        "data": {"id": "cmd-1", "deviceId": "device-1", "relayIndex": 1, "action": "ON"},
+                        "data": {
+                            "command": {
+                                "id": "cmd-1",
+                                "deviceId": "device-1",
+                                "operation": "device.relay.set",
+                                "status": "SUCCESS",
+                                "params": {"relays": [{"index": 1, "action": "ON"}]},
+                                "createdAt": "2026-07-15T00:00:00Z",
+                            },
+                            "state": {
+                                "deviceId": "device-1",
+                                "status": "ONLINE",
+                                "peripherals": {"relays": [{"index": 1, "on": True}]},
+                            },
+                        },
                     },
                     status=202,
                 ),
@@ -120,11 +134,51 @@ class WlteClientTest(unittest.TestCase):
             transport=transport,
         )
 
-        command = client.relays.set("device-1", {"index": 1, "on": True, "idempotencyKey": "idem-1"})
+        execution = client.relays.set("device-1", {"index": 1, "on": True, "idempotencyKey": "idem-1"})
 
-        self.assertEqual(command["action"], "ON")
-        self.assertEqual(transport.calls[1]["url"], "https://api.test/wlte/v1/devices/device-1/relays/1/commands")
-        self.assertEqual(json.loads(transport.calls[1]["body"]), {"action": "ON"})
+        self.assertEqual(execution["command"]["operation"], "device.relay.set")
+        self.assertTrue(execution["state"]["peripherals"]["relays"][0]["on"])
+        self.assertEqual(transport.calls[1]["url"], "https://api.test/wlte/v1/devices/device-1/relays/commands")
+        self.assertEqual(json.loads(transport.calls[1]["body"]), {"relays": [{"index": 1, "action": "ON"}]})
+
+    def test_controls_multiple_relays_in_one_request(self):
+        transport = FakeTransport(
+            [
+                response({"code": "SUCCESS", "message": "ok", "data": {"accessToken": "token", "expiresIn": 3600}}),
+                response(
+                    {
+                        "code": "COMMAND_ACCEPTED",
+                        "message": "accepted",
+                        "data": {
+                            "command": {
+                                "id": "cmd-2",
+                                "deviceId": "device-1",
+                                "operation": "device.relay.set",
+                                "status": "SUCCESS",
+                                "params": {"relays": [{"index": 1, "action": "ON"}, {"index": 2, "action": "OFF"}]},
+                                "createdAt": "2026-07-15T00:00:00Z",
+                            }
+                        },
+                    },
+                    status=202,
+                ),
+            ]
+        )
+        client = WlteClient(client_id="client", client_secret="secret", base_url="https://api.test", transport=transport)
+
+        execution = client.relays.control(
+            "device-1",
+            {
+                "relays": [{"index": 1, "action": "ON"}, {"index": 2, "action": "OFF"}],
+                "idempotencyKey": "idem-multi",
+            },
+        )
+
+        self.assertEqual(execution["command"]["operation"], "device.relay.set")
+        self.assertEqual(
+            json.loads(transport.calls[1]["body"]),
+            {"relays": [{"index": 1, "action": "ON"}, {"index": 2, "action": "OFF"}]},
+        )
 
     def test_lists_device_profiles(self):
         transport = FakeTransport(
@@ -189,7 +243,7 @@ class WlteClientTest(unittest.TestCase):
                     {
                         "code": "COMMAND_ACCEPTED",
                         "message": "accepted",
-                        "data": {"id": "cmd-1", "deviceId": "device-1", "type": "RELAY_JOG_CONFIG_SET", "result": {"relayIndex": 1, "durationSec": 2}},
+                        "data": {"command": {"id": "cmd-1", "deviceId": "device-1", "operation": "device.relay.jogConfig.set", "status": "SUCCESS", "params": {"relayIndex": 1, "durationSec": 2}, "result": {"relayIndex": 1, "durationSec": 2}, "createdAt": "2026-07-15T00:00:00Z"}},
                     },
                     status=202,
                 ),
@@ -197,9 +251,9 @@ class WlteClientTest(unittest.TestCase):
         )
         client = WlteClient(client_id="client", client_secret="secret", base_url="https://api.test", transport=transport)
 
-        command = client.relays.set_jog_config("device-1", {"index": 1, "durationSec": 2, "idempotencyKey": "idem-jog"})
+        execution = client.relays.set_jog_config("device-1", {"index": 1, "durationSec": 2, "idempotencyKey": "idem-jog"})
 
-        self.assertEqual(command["type"], "RELAY_JOG_CONFIG_SET")
+        self.assertEqual(execution["command"]["operation"], "device.relay.jogConfig.set")
         self.assertEqual(transport.calls[1]["method"], "PUT")
         self.assertEqual(transport.calls[1]["url"], "https://api.test/wlte/v1/devices/device-1/relays/1/jog-config")
         self.assertEqual(json.loads(transport.calls[1]["body"]), {"durationSec": 2})
@@ -212,7 +266,7 @@ class WlteClientTest(unittest.TestCase):
                     {
                         "code": "COMMAND_ACCEPTED",
                         "message": "accepted",
-                        "data": {"id": "cmd-485", "deviceId": "device-1", "type": "RS485_TRANSCEIVE", "result": {"requestHex": "020600340000C837"}},
+                        "data": {"command": {"id": "cmd-485", "deviceId": "device-1", "operation": "device.rs485.transceive", "status": "SUCCESS", "params": {"requestHex": "020600340000C837"}, "result": {"responseHex": "020600340000C837"}, "createdAt": "2026-07-15T00:00:00Z"}},
                     },
                     status=202,
                 ),
@@ -220,9 +274,9 @@ class WlteClientTest(unittest.TestCase):
         )
         client = WlteClient(client_id="client", client_secret="secret", base_url="https://api.test", transport=transport)
 
-        command = client.rs485.transceive("device-1", {"requestHex": "020600340000C837", "idempotencyKey": "idem-485"})
+        execution = client.rs485.transceive("device-1", {"requestHex": "020600340000C837", "idempotencyKey": "idem-485"})
 
-        self.assertEqual(command["type"], "RS485_TRANSCEIVE")
+        self.assertEqual(execution["command"]["operation"], "device.rs485.transceive")
         self.assertEqual(transport.calls[1]["method"], "POST")
         self.assertEqual(transport.calls[1]["url"], "https://api.test/wlte/v1/devices/device-1/rs485/transceive")
         self.assertEqual(json.loads(transport.calls[1]["body"]), {"requestHex": "020600340000C837"})
@@ -235,7 +289,7 @@ class WlteClientTest(unittest.TestCase):
                     {
                         "code": "COMMAND_ACCEPTED",
                         "message": "accepted",
-                        "data": {"id": "cmd-baud", "deviceId": "device-1", "type": "RS485_BAUD_RATE_SET", "result": {"baudRate": 9600}},
+                        "data": {"command": {"id": "cmd-baud", "deviceId": "device-1", "operation": "device.rs485.baudRate.set", "status": "SUCCESS", "params": {"baudRate": 9600}, "result": {"baudRate": 9600}, "createdAt": "2026-07-15T00:00:00Z"}},
                     },
                     status=202,
                 ),
@@ -243,9 +297,9 @@ class WlteClientTest(unittest.TestCase):
         )
         client = WlteClient(client_id="client", client_secret="secret", base_url="https://api.test", transport=transport)
 
-        command = client.rs485.set_baud_rate("device-1", {"baudRate": 9600, "idempotencyKey": "idem-baud"})
+        execution = client.rs485.set_baud_rate("device-1", {"baudRate": 9600, "idempotencyKey": "idem-baud"})
 
-        self.assertEqual(command["type"], "RS485_BAUD_RATE_SET")
+        self.assertEqual(execution["command"]["operation"], "device.rs485.baudRate.set")
         self.assertEqual(transport.calls[1]["method"], "PUT")
         self.assertEqual(transport.calls[1]["url"], "https://api.test/wlte/v1/devices/device-1/rs485/baud-rate")
         self.assertEqual(json.loads(transport.calls[1]["body"]), {"baudRate": 9600})

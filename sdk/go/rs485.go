@@ -6,8 +6,8 @@ type RS485Service struct {
 	client *Client
 }
 
-func (s *RS485Service) Transceive(ctx context.Context, deviceID string, options RS485TransceiveOptions) (Command, error) {
-	var result Command
+func (s *RS485Service) Transceive(ctx context.Context, deviceID string, options RS485TransceiveOptions) (CommandExecution, error) {
+	var result CommandExecution
 	err := s.client.request(
 		ctx,
 		"POST",
@@ -20,8 +20,8 @@ func (s *RS485Service) Transceive(ctx context.Context, deviceID string, options 
 	return result, err
 }
 
-func (s *RS485Service) SetBaudRate(ctx context.Context, deviceID string, options RS485BaudRateOptions) (Command, error) {
-	var result Command
+func (s *RS485Service) SetBaudRate(ctx context.Context, deviceID string, options RS485BaudRateOptions) (CommandExecution, error) {
+	var result CommandExecution
 	err := s.client.request(
 		ctx,
 		"PUT",

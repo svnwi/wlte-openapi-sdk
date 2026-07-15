@@ -22,8 +22,8 @@ body:json {
 }
 
 script:post-response {
-  if (res.status === 202 && res.body.data && res.body.data.id) {
-    bru.setEnvVar("commandId", res.body.data.id);
+  if (res.status === 202 && res.body.data && res.body.data.command) {
+    bru.setEnvVar("commandId", res.body.data.command.id);
   }
 }
 
@@ -31,11 +31,11 @@ tests {
   test("accepted or known non-fatal code", function() {
     if (res.status === 202) {
       expect(res.body.code).to.equal("COMMAND_ACCEPTED");
-      expect(res.body.data.id).to.be.a("string").and.not.empty;
-      expect(res.body.data.deviceId).to.equal(bru.getEnvVar("rs485DeviceId"));
-      expect(res.body.data.type).to.equal("RS485_BAUD_RATE_SET");
-      if (res.body.data.result !== undefined) {
-        expect(res.body.data.result.baudRate).to.be.a("number");
+      expect(res.body.data.command.id).to.be.a("string").and.not.empty;
+      expect(res.body.data.command.deviceId).to.equal(bru.getEnvVar("rs485DeviceId"));
+      expect(res.body.data.command.operation).to.equal("device.rs485.baudRate.set");
+      if (res.body.data.command.result !== undefined) {
+        expect(res.body.data.command.result.baudRate).to.be.a("number");
       }
     } else {
       const known = ["AUTH_SCOPE_DENIED", "DEVICE_OFFLINE", "DEVICE_NOT_FOUND", "RATE_LIMITED", "COMMAND_REJECTED", "GATEWAY_UNAVAILABLE"];

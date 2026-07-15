@@ -6,9 +6,9 @@ const client = new WlteClient({
   baseUrl: process.env.WLTE_BASE_URL,
 })
 
-const command = await client.relays.set(process.env.WLTE_DEVICE_ID!, {
+const execution = await client.relays.set(process.env.WLTE_DEVICE_ID!, {
   index: 1,
   on: true,
   idempotencyKey: `example-${Date.now()}`,
 })
-console.log(command)
+console.log(execution)

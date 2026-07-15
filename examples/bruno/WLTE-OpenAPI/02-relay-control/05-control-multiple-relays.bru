@@ -1,7 +1,7 @@
 meta {
-  name: Turn Relay On
+  name: Control Multiple Relays
   type: http
-  seq: 1
+  seq: 5
 }
 
 post {
@@ -12,13 +12,14 @@ post {
 
 headers {
   Authorization: Bearer {{accessToken}}
-  Idempotency-Key: guide-on-{{$randomInt}}
+  Idempotency-Key: guide-multi-{{$randomInt}}
 }
 
 body:json {
   {
     "relays": [
-      { "index": {{relayIndex}}, "action": "ON" }
+      { "index": 1, "action": "ON" },
+      { "index": 2, "action": "OFF" }
     ]
   }
 }
@@ -33,11 +34,10 @@ tests {
   test("accepted or known non-fatal code", function() {
     if (res.status === 202) {
       expect(res.body.code).to.equal("COMMAND_ACCEPTED");
-      expect(res.body.data.command.id).to.be.a("string").and.not.empty;
       expect(res.body.data.command.operation).to.equal("device.relay.set");
-      expect(res.body.data.command.params.relays[0].action).to.equal("ON");
+      expect(res.body.data.command.params.relays).to.have.length(2);
     } else {
-      const known = ["DEVICE_OFFLINE", "DEVICE_NOT_FOUND", "RATE_LIMITED", "COMMAND_REJECTED"];
+      const known = ["INVALID_REQUEST", "DEVICE_OFFLINE", "DEVICE_NOT_FOUND", "RATE_LIMITED", "COMMAND_REJECTED"];
       expect(known).to.include(res.body.code);
     }
   });

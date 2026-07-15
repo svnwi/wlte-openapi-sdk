@@ -13,9 +13,11 @@ type Envelope[T any] struct {
 }
 
 type TokenResponse struct {
-	AccessToken string `json:"accessToken"`
-	TokenType   string `json:"tokenType"`
-	ExpiresIn   int    `json:"expiresIn"`
+	AccessToken string   `json:"accessToken"`
+	TokenType   string   `json:"tokenType"`
+	ExpiresIn   int      `json:"expiresIn"`
+	ClientID    string   `json:"clientId"`
+	Scopes      []string `json:"scopes"`
 }
 
 type Pagination struct {
@@ -158,30 +160,40 @@ const (
 	CommandStatusTimeout CommandStatus = "TIMEOUT"
 )
 
-type CommandType string
+type CommandOperation string
 
 const (
-	CommandTypeRelaySet          CommandType = "RELAY_SET"
-	CommandTypeRS485Transceive   CommandType = "RS485_TRANSCEIVE"
-	CommandTypeRS485BaudRateSet  CommandType = "RS485_BAUD_RATE_SET"
-	CommandTypeRelayJogConfigSet CommandType = "RELAY_JOG_CONFIG_SET"
+	CommandOperationRelaySet          CommandOperation = "device.relay.set"
+	CommandOperationRS485Transceive   CommandOperation = "device.rs485.transceive"
+	CommandOperationRS485BaudRateSet  CommandOperation = "device.rs485.baudRate.set"
+	CommandOperationRelayJogConfigSet CommandOperation = "device.relay.jogConfig.set"
 )
 
 type Command struct {
-	ID         string          `json:"id"`
-	DeviceID   string          `json:"deviceId"`
-	Type       CommandType     `json:"type,omitempty"`
-	RelayIndex int             `json:"relayIndex,omitempty"`
-	Action     RelayAction     `json:"action,omitempty"`
-	Status     CommandStatus   `json:"status,omitempty"`
-	Result     json.RawMessage `json:"result,omitempty"`
-	CreatedAt  *time.Time      `json:"createdAt,omitempty"`
+	ID        string           `json:"id"`
+	DeviceID  string           `json:"deviceId"`
+	Operation CommandOperation `json:"operation"`
+	Status    CommandStatus    `json:"status"`
+	Params    json.RawMessage  `json:"params,omitempty"`
+	Result    json.RawMessage  `json:"result,omitempty"`
+	CreatedAt *time.Time       `json:"createdAt"`
 }
 
 type CommandResult = Command
 
+type CommandDeviceState struct {
+	DeviceID       string       `json:"deviceId"`
+	Status         string       `json:"status"`
+	Peripherals    *Peripherals `json:"peripherals,omitempty"`
+	StateUpdatedAt string       `json:"stateUpdatedAt,omitempty"`
+}
+
+type CommandExecution struct {
+	Command Command             `json:"command"`
+	State   *CommandDeviceState `json:"state,omitempty"`
+}
+
 type RS485TransceiveResult struct {
-	RequestHex  string `json:"requestHex"`
 	ResponseHex string `json:"responseHex,omitempty"`
 }
 
@@ -192,6 +204,16 @@ type RS485BaudRateResult struct {
 type RelayJogConfigResult struct {
 	RelayIndex  int `json:"relayIndex"`
 	DurationSec int `json:"durationSec"`
+}
+
+type RelayCommand struct {
+	Index  int         `json:"index"`
+	Action RelayAction `json:"action"`
+}
+
+type RelayCommandOptions struct {
+	Relays         []RelayCommand
+	IdempotencyKey string
 }
 
 type RelaySetOptions struct {

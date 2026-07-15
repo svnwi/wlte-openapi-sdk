@@ -3,6 +3,14 @@ from __future__ import annotations
 from typing import Literal, TypedDict
 
 
+class TokenResponse(TypedDict):
+    accessToken: str
+    tokenType: Literal["Bearer"]
+    expiresIn: int
+    clientId: str
+    scopes: list[str]
+
+
 class Pagination(TypedDict):
     page: int
     pageSize: int
@@ -121,41 +129,54 @@ class DeviceProfileList(TypedDict):
     profiles: list[DeviceProfile]
 
 
-class RelaySetOptions(TypedDict, total=False):
+class RelaySetOptions(TypedDict):
     index: int
     on: bool
     idempotencyKey: str
 
 
-class RelayJogOptions(TypedDict, total=False):
+class RelayCommand(TypedDict):
     index: int
-    durationMs: int
+    action: "RelayAction"
+
+
+class RelayCommandOptions(TypedDict):
+    relays: list[RelayCommand]
     idempotencyKey: str
 
 
-class RelayJogConfigOptions(TypedDict, total=False):
+class RelayJogOptions(TypedDict):
+    index: int
+    idempotencyKey: str
+
+
+class RelayJogConfigOptions(TypedDict):
     index: int
     durationSec: int
     idempotencyKey: str
 
 
-class RS485TransceiveOptions(TypedDict, total=False):
+class RS485TransceiveOptions(TypedDict):
     requestHex: str
     idempotencyKey: str
 
 
-class RS485BaudRateOptions(TypedDict, total=False):
+class RS485BaudRateOptions(TypedDict):
     baudRate: int
     idempotencyKey: str
 
 
 CommandStatus = Literal["SENT", "SUCCESS", "FAILED", "TIMEOUT"]
 RelayAction = Literal["ON", "OFF", "JOG"]
-CommandType = Literal["RELAY_SET", "RS485_TRANSCEIVE", "RS485_BAUD_RATE_SET", "RELAY_JOG_CONFIG_SET"]
+CommandOperation = Literal[
+    "device.relay.set",
+    "device.rs485.transceive",
+    "device.rs485.baudRate.set",
+    "device.relay.jogConfig.set",
+]
 
 
 class RS485TransceiveResult(TypedDict, total=False):
-    requestHex: str
     responseHex: str
 
 
@@ -171,10 +192,9 @@ class RelayJogConfigResult(TypedDict):
 class Command(TypedDict, total=False):
     id: str
     deviceId: str
-    type: CommandType
-    relayIndex: int
-    action: RelayAction
+    operation: CommandOperation
     status: CommandStatus
+    params: dict[str, object]
     result: RS485TransceiveResult | RS485BaudRateResult | RelayJogConfigResult | dict[str, object]
     createdAt: str
 
@@ -182,3 +202,15 @@ class Command(TypedDict, total=False):
 class CommandResult(Command):
     status: CommandStatus
     createdAt: str
+
+
+class CommandDeviceState(TypedDict, total=False):
+    deviceId: str
+    status: Literal["ONLINE", "OFFLINE"]
+    peripherals: Peripherals
+    stateUpdatedAt: str
+
+
+class CommandExecution(TypedDict, total=False):
+    command: Command
+    state: CommandDeviceState

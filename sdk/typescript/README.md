@@ -69,8 +69,16 @@ const device = await client.devices.get(deviceId)
 ## Control Relay
 
 ```ts
-await client.relays.set(deviceId, { index: 1, on: true, idempotencyKey: 'unique-key' })
-await client.relays.jog(deviceId, { index: 1, idempotencyKey: 'unique-key' })
+const execution = await client.relays.set(deviceId, { index: 1, on: true, idempotencyKey: 'unique-key' })
+console.log(execution.command, execution.state)
+
+await client.relays.control(deviceId, {
+  relays: [
+    { index: 1, action: 'ON' },
+    { index: 2, action: 'OFF' },
+  ],
+  idempotencyKey: 'unique-multi-key',
+})
 ```
 
 ## Query Command Result

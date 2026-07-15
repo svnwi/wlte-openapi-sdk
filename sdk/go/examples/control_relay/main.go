@@ -25,7 +25,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	command, err := client.Relays.Set(context.Background(), os.Getenv("WLTE_DEVICE_ID"), wlteopenapi.RelaySetOptions{
+	execution, err := client.Relays.Set(context.Background(), os.Getenv("WLTE_DEVICE_ID"), wlteopenapi.RelaySetOptions{
 		Index:          1,
 		On:             true,
 		IdempotencyKey: fmt.Sprintf("example-%d", time.Now().UnixNano()),
@@ -34,7 +34,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	if err := common.PrintJSON(command); err != nil {
+	if err := common.PrintJSON(execution); err != nil {
 		log.Fatal(err)
 	}
 }

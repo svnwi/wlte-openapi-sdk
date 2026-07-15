@@ -57,6 +57,18 @@ devices, err := client.Devices.List(context.Background(), wlteopenapi.ListDevice
 profiles, err := client.Profiles.List(context.Background())
 ```
 
+## Control Relays
+
+```go
+execution, err := client.Relays.Control(context.Background(), deviceID, wlteopenapi.RelayCommandOptions{
+    Relays: []wlteopenapi.RelayCommand{
+        {Index: 1, Action: wlteopenapi.RelayActionOn},
+        {Index: 2, Action: wlteopenapi.RelayActionOff},
+    },
+    IdempotencyKey: "unique-key",
+})
+```
+
 ## Behavior
 
 - Requests tokens automatically with client credentials.

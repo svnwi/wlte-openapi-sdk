@@ -146,7 +146,7 @@ func TestRelaySetMapsToCommandAction(t *testing.T) {
 				idemKey = req.Header.Get("Idempotency-Key")
 				payload, _ := io.ReadAll(req.Body)
 				commandBody = string(payload)
-				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-1","deviceId":"device-1","relayIndex":1,"action":"ON"}}`, nil), nil
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"command":{"id":"cmd-1","deviceId":"device-1","operation":"device.relay.set","status":"SUCCESS","params":{"relays":[{"index":1,"action":"ON"}]},"createdAt":"2026-07-15T00:00:00Z"},"state":{"deviceId":"device-1","status":"ONLINE","peripherals":{"relays":[{"index":1,"on":true}]}}}}`, nil), nil
 			}),
 		},
 	})
@@ -154,7 +154,7 @@ func TestRelaySetMapsToCommandAction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command, err := client.Relays.Set(context.Background(), "device-1", RelaySetOptions{
+	execution, err := client.Relays.Set(context.Background(), "device-1", RelaySetOptions{
 		Index:          1,
 		On:             true,
 		IdempotencyKey: "idem-1",
@@ -163,17 +163,52 @@ func TestRelaySetMapsToCommandAction(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if command.Action != RelayActionOn {
-		t.Fatalf("unexpected action: %s", command.Action)
+	if execution.Command.Operation != CommandOperationRelaySet {
+		t.Fatalf("unexpected operation: %s", execution.Command.Operation)
 	}
-	if commandURL != "https://api.test/wlte/v1/devices/device-1/relays/1/commands" {
+	if execution.State == nil || execution.State.Peripherals == nil || len(execution.State.Peripherals.Relays) != 1 {
+		t.Fatalf("unexpected state: %+v", execution.State)
+	}
+	if commandURL != "https://api.test/wlte/v1/devices/device-1/relays/commands" {
 		t.Fatalf("unexpected url: %s", commandURL)
 	}
-	if commandBody != `{"action":"ON"}` {
+	if commandBody != `{"relays":[{"index":1,"action":"ON"}]}` {
 		t.Fatalf("unexpected body: %s", commandBody)
 	}
 	if idemKey != "idem-1" {
 		t.Fatalf("unexpected idempotency key: %s", idemKey)
+	}
+}
+
+func TestRelayControlSupportsMultipleRelays(t *testing.T) {
+	var commandBody string
+	client, err := NewClient(ClientOptions{
+		ClientID: "client", ClientSecret: "secret", BaseURL: "https://api.test",
+		HTTPClient: &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.URL.Path == "/wlte/v1/auth/token" {
+				return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
+			}
+			payload, _ := io.ReadAll(req.Body)
+			commandBody = string(payload)
+			return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"command":{"id":"cmd-2","deviceId":"device-1","operation":"device.relay.set","status":"SUCCESS","params":{"relays":[{"index":1,"action":"ON"},{"index":2,"action":"OFF"}]},"createdAt":"2026-07-15T00:00:00Z"}}}`, nil), nil
+		})},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	execution, err := client.Relays.Control(context.Background(), "device-1", RelayCommandOptions{
+		Relays:         []RelayCommand{{Index: 1, Action: RelayActionOn}, {Index: 2, Action: RelayActionOff}},
+		IdempotencyKey: "idem-multi",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if execution.Command.Operation != CommandOperationRelaySet {
+		t.Fatalf("unexpected operation: %s", execution.Command.Operation)
+	}
+	if commandBody != `{"relays":[{"index":1,"action":"ON"},{"index":2,"action":"OFF"}]}` {
+		t.Fatalf("unexpected body: %s", commandBody)
 	}
 }
 
@@ -253,7 +288,7 @@ func TestRelaySetJogConfig(t *testing.T) {
 				idemKey = req.Header.Get("Idempotency-Key")
 				payload, _ := io.ReadAll(req.Body)
 				commandBody = string(payload)
-				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-1","deviceId":"device-1","type":"RELAY_JOG_CONFIG_SET","result":{"relayIndex":1,"durationSec":2}}}`, nil), nil
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"command":{"id":"cmd-1","deviceId":"device-1","operation":"device.relay.jogConfig.set","status":"SUCCESS","params":{"relayIndex":1,"durationSec":2},"result":{"relayIndex":1,"durationSec":2},"createdAt":"2026-07-15T00:00:00Z"}}}`, nil), nil
 			}),
 		},
 	})
@@ -261,12 +296,12 @@ func TestRelaySetJogConfig(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command, err := client.Relays.SetJogConfig(context.Background(), "device-1", RelayJogConfigOptions{Index: 1, DurationSec: 2, IdempotencyKey: "idem-jog"})
+	execution, err := client.Relays.SetJogConfig(context.Background(), "device-1", RelayJogConfigOptions{Index: 1, DurationSec: 2, IdempotencyKey: "idem-jog"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if command.Type != CommandTypeRelayJogConfigSet {
-		t.Fatalf("unexpected command type: %s", command.Type)
+	if execution.Command.Operation != CommandOperationRelayJogConfigSet {
+		t.Fatalf("unexpected operation: %s", execution.Command.Operation)
 	}
 	if commandURL != "https://api.test/wlte/v1/devices/device-1/relays/1/jog-config" {
 		t.Fatalf("unexpected url: %s", commandURL)
@@ -294,7 +329,7 @@ func TestRS485Transceive(t *testing.T) {
 				commandURL = req.URL.String()
 				payload, _ := io.ReadAll(req.Body)
 				commandBody = string(payload)
-				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-485","deviceId":"device-1","type":"RS485_TRANSCEIVE","result":{"requestHex":"020600340000C837"}}}`, nil), nil
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"command":{"id":"cmd-485","deviceId":"device-1","operation":"device.rs485.transceive","status":"SUCCESS","params":{"requestHex":"020600340000C837"},"result":{"responseHex":"020600340000C837"},"createdAt":"2026-07-15T00:00:00Z"}}}`, nil), nil
 			}),
 		},
 	})
@@ -302,12 +337,12 @@ func TestRS485Transceive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command, err := client.RS485.Transceive(context.Background(), "device-1", RS485TransceiveOptions{RequestHex: "020600340000C837", IdempotencyKey: "idem-485"})
+	execution, err := client.RS485.Transceive(context.Background(), "device-1", RS485TransceiveOptions{RequestHex: "020600340000C837", IdempotencyKey: "idem-485"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if command.Type != CommandTypeRS485Transceive {
-		t.Fatalf("unexpected command type: %s", command.Type)
+	if execution.Command.Operation != CommandOperationRS485Transceive {
+		t.Fatalf("unexpected operation: %s", execution.Command.Operation)
 	}
 	if commandURL != "https://api.test/wlte/v1/devices/device-1/rs485/transceive" {
 		t.Fatalf("unexpected url: %s", commandURL)
@@ -332,7 +367,7 @@ func TestRS485SetBaudRate(t *testing.T) {
 				commandURL = req.URL.String()
 				payload, _ := io.ReadAll(req.Body)
 				commandBody = string(payload)
-				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"id":"cmd-baud","deviceId":"device-1","type":"RS485_BAUD_RATE_SET","result":{"baudRate":9600}}}`, nil), nil
+				return jsonResponse(202, `{"code":"COMMAND_ACCEPTED","message":"accepted","data":{"command":{"id":"cmd-baud","deviceId":"device-1","operation":"device.rs485.baudRate.set","status":"SUCCESS","params":{"baudRate":9600},"result":{"baudRate":9600},"createdAt":"2026-07-15T00:00:00Z"}}}`, nil), nil
 			}),
 		},
 	})
@@ -340,12 +375,12 @@ func TestRS485SetBaudRate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	command, err := client.RS485.SetBaudRate(context.Background(), "device-1", RS485BaudRateOptions{BaudRate: 9600, IdempotencyKey: "idem-baud"})
+	execution, err := client.RS485.SetBaudRate(context.Background(), "device-1", RS485BaudRateOptions{BaudRate: 9600, IdempotencyKey: "idem-baud"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if command.Type != CommandTypeRS485BaudRateSet {
-		t.Fatalf("unexpected command type: %s", command.Type)
+	if execution.Command.Operation != CommandOperationRS485BaudRateSet {
+		t.Fatalf("unexpected operation: %s", execution.Command.Operation)
 	}
 	if commandURL != "https://api.test/wlte/v1/devices/device-1/rs485/baud-rate" {
 		t.Fatalf("unexpected url: %s", commandURL)

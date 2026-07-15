@@ -114,7 +114,17 @@ describe('WlteClient', () => {
         {
           code: 'COMMAND_ACCEPTED',
           message: 'accepted',
-          data: { id: 'cmd-1', deviceId: 'device-1', relayIndex: 1, action: 'ON' },
+          data: {
+            command: {
+              id: 'cmd-1',
+              deviceId: 'device-1',
+              operation: 'device.relay.set',
+              status: 'SUCCESS',
+              params: { relays: [{ index: 1, action: 'ON' }] },
+              createdAt: '2026-07-15T00:00:00Z',
+            },
+            state: { deviceId: 'device-1', status: 'ONLINE', peripherals: { relays: [{ index: 1, on: true }] } },
+          },
         },
         { status: 202 },
       )
@@ -127,11 +137,49 @@ describe('WlteClient', () => {
       fetch: fetchMock,
     })
 
-    const command = await client.relays.set('device-1', { index: 1, on: true, idempotencyKey: 'idem-1' })
+    const execution = await client.relays.set('device-1', { index: 1, on: true, idempotencyKey: 'idem-1' })
 
-    expect(command.action).toBe('ON')
-    expect(calls[1]?.url).toBe('https://api.test/wlte/v1/devices/device-1/relays/1/commands')
-    expect(calls[1]?.init?.body).toBe(JSON.stringify({ action: 'ON' }))
+    expect(execution.command.operation).toBe('device.relay.set')
+    expect(execution.state?.peripherals?.relays?.[0]?.on).toBe(true)
+    expect(calls[1]?.url).toBe('https://api.test/wlte/v1/devices/device-1/relays/commands')
+    expect(calls[1]?.init?.body).toBe(JSON.stringify({ relays: [{ index: 1, action: 'ON' }] }))
+  })
+
+  it('controls multiple relays in one request', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const fetchMock: typeof fetch = async (input, init) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.endsWith('/wlte/v1/auth/token')) {
+        return jsonResponse({ code: 'SUCCESS', message: 'ok', data: { accessToken: 'token', expiresIn: 3600 } })
+      }
+      return jsonResponse(
+        {
+          code: 'COMMAND_ACCEPTED',
+          message: 'accepted',
+          data: {
+            command: {
+              id: 'cmd-2',
+              deviceId: 'device-1',
+              operation: 'device.relay.set',
+              status: 'SUCCESS',
+              params: { relays: [{ index: 1, action: 'ON' }, { index: 2, action: 'OFF' }] },
+              createdAt: '2026-07-15T00:00:00Z',
+            },
+          },
+        },
+        { status: 202 },
+      )
+    }
+    const client = new WlteClient({ clientId: 'client', clientSecret: 'secret', baseUrl: 'https://api.test', fetch: fetchMock })
+
+    const execution = await client.relays.control('device-1', {
+      relays: [{ index: 1, action: 'ON' }, { index: 2, action: 'OFF' }],
+      idempotencyKey: 'idem-multi',
+    })
+
+    expect(execution.command.operation).toBe('device.relay.set')
+    expect(calls[1]?.init?.body).toBe(JSON.stringify({ relays: [{ index: 1, action: 'ON' }, { index: 2, action: 'OFF' }] }))
   })
 
   it('lists device profiles', async () => {
@@ -210,7 +258,7 @@ describe('WlteClient', () => {
         {
           code: 'COMMAND_ACCEPTED',
           message: 'accepted',
-          data: { id: 'cmd-1', deviceId: 'device-1', type: 'RELAY_JOG_CONFIG_SET', result: { relayIndex: 1, durationSec: 2 } },
+          data: { command: { id: 'cmd-1', deviceId: 'device-1', operation: 'device.relay.jogConfig.set', status: 'SUCCESS', params: { relayIndex: 1, durationSec: 2 }, result: { relayIndex: 1, durationSec: 2 }, createdAt: '2026-07-15T00:00:00Z' } },
         },
         { status: 202 },
       )
@@ -218,9 +266,9 @@ describe('WlteClient', () => {
 
     const client = new WlteClient({ clientId: 'client', clientSecret: 'secret', baseUrl: 'https://api.test', fetch: fetchMock })
 
-    const command = await client.relays.setJogConfig('device-1', { index: 1, durationSec: 2, idempotencyKey: 'idem-jog' })
+    const execution = await client.relays.setJogConfig('device-1', { index: 1, durationSec: 2, idempotencyKey: 'idem-jog' })
 
-    expect(command.type).toBe('RELAY_JOG_CONFIG_SET')
+    expect(execution.command.operation).toBe('device.relay.jogConfig.set')
     expect(calls[1]?.url).toBe('https://api.test/wlte/v1/devices/device-1/relays/1/jog-config')
     expect(calls[1]?.init?.method).toBe('PUT')
     expect(calls[1]?.init?.body).toBe(JSON.stringify({ durationSec: 2 }))
@@ -240,7 +288,7 @@ describe('WlteClient', () => {
         {
           code: 'COMMAND_ACCEPTED',
           message: 'accepted',
-          data: { id: 'cmd-485', deviceId: 'device-1', type: 'RS485_TRANSCEIVE', result: { requestHex: '020600340000C837' } },
+          data: { command: { id: 'cmd-485', deviceId: 'device-1', operation: 'device.rs485.transceive', status: 'SUCCESS', params: { requestHex: '020600340000C837' }, result: { responseHex: '020600340000C837' }, createdAt: '2026-07-15T00:00:00Z' } },
         },
         { status: 202 },
       )
@@ -248,9 +296,9 @@ describe('WlteClient', () => {
 
     const client = new WlteClient({ clientId: 'client', clientSecret: 'secret', baseUrl: 'https://api.test', fetch: fetchMock })
 
-    const command = await client.rs485.transceive('device-1', { requestHex: '020600340000C837', idempotencyKey: 'idem-485' })
+    const execution = await client.rs485.transceive('device-1', { requestHex: '020600340000C837', idempotencyKey: 'idem-485' })
 
-    expect(command.type).toBe('RS485_TRANSCEIVE')
+    expect(execution.command.operation).toBe('device.rs485.transceive')
     expect(calls[1]?.url).toBe('https://api.test/wlte/v1/devices/device-1/rs485/transceive')
     expect(calls[1]?.init?.method).toBe('POST')
     expect(calls[1]?.init?.body).toBe(JSON.stringify({ requestHex: '020600340000C837' }))
@@ -270,7 +318,7 @@ describe('WlteClient', () => {
         {
           code: 'COMMAND_ACCEPTED',
           message: 'accepted',
-          data: { id: 'cmd-baud', deviceId: 'device-1', type: 'RS485_BAUD_RATE_SET', result: { baudRate: 9600 } },
+          data: { command: { id: 'cmd-baud', deviceId: 'device-1', operation: 'device.rs485.baudRate.set', status: 'SUCCESS', params: { baudRate: 9600 }, result: { baudRate: 9600 }, createdAt: '2026-07-15T00:00:00Z' } },
         },
         { status: 202 },
       )
@@ -278,9 +326,9 @@ describe('WlteClient', () => {
 
     const client = new WlteClient({ clientId: 'client', clientSecret: 'secret', baseUrl: 'https://api.test', fetch: fetchMock })
 
-    const command = await client.rs485.setBaudRate('device-1', { baudRate: 9600, idempotencyKey: 'idem-baud' })
+    const execution = await client.rs485.setBaudRate('device-1', { baudRate: 9600, idempotencyKey: 'idem-baud' })
 
-    expect(command.type).toBe('RS485_BAUD_RATE_SET')
+    expect(execution.command.operation).toBe('device.rs485.baudRate.set')
     expect(calls[1]?.url).toBe('https://api.test/wlte/v1/devices/device-1/rs485/baud-rate')
     expect(calls[1]?.init?.method).toBe('PUT')
     expect(calls[1]?.init?.body).toBe(JSON.stringify({ baudRate: 9600 }))

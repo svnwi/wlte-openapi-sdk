@@ -15,7 +15,7 @@ This collection covers the core WLTE OpenAPI HTTP flow:
 
 - `00-auth`: get access token
 - `01-device-queries`: list devices, query real-time status, read device config, list device profiles
-- `02-relay-control`: turn relay on, turn relay off, jog relay, set relay jog time
+- `02-relay-control`: control one or multiple relays, jog a relay, and set relay jog time
 - `03-command-result`: query command execution result
 - `04-rs485`: send RS485 transceive commands and set RS485 baud rate
 

@@ -33,15 +33,16 @@ tests {
     if (res.status !== 200) return;
     expect(res.body.data.deviceId).to.be.a("string").and.not.empty;
   });
-  test("command type shape", function() {
+  test("command operation shape", function() {
     if (res.status !== 200) return;
     const d = res.body.data;
-    if (d.type === undefined || d.type === "RELAY_SET") {
-      expect(d.relayIndex).to.be.a("number");
-      expect(d.action).to.be.oneOf(["ON", "OFF", "JOG"]);
-      return;
-    }
-    expect(d.type).to.be.oneOf(["RS485_TRANSCEIVE", "RS485_BAUD_RATE_SET", "RELAY_JOG_CONFIG_SET"]);
+    expect(d.operation).to.be.oneOf([
+      "device.relay.set",
+      "device.rs485.transceive",
+      "device.rs485.baudRate.set",
+      "device.relay.jogConfig.set"
+    ]);
+    expect(d.params).to.be.an("object");
     if (d.result !== undefined) {
       expect(d.result).to.be.an("object");
     }

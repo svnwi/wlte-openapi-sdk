@@ -104,13 +104,13 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimitResponse'
-  /wlte/v1/devices/{deviceId}/relays/{relayIndex}/commands:
+  /wlte/v1/devices/{deviceId}/relays/commands:
     post:
       operationId: createRelayCommand
-      summary: Create a relay command.
+      summary: Control one or more relays in one device command.
+      description: Relay changes in one request are dispatched as one device command and consume one device-operation allowance.
       parameters:
         - $ref: '#/components/parameters/DeviceId'
-        - $ref: '#/components/parameters/RelayIndex'
         - $ref: '#/components/parameters/IdempotencyKey'
       requestBody:
         required: true
@@ -124,7 +124,49 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandEnvelope'
+                $ref: '#/components/schemas/CommandExecutionEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/relays/{index}/commands:
+    post:
+      operationId: createSingleRelayCommand
+      summary: Control one relay using the compatibility endpoint.
+      description: Each call is a separate device command. Use the multi-relay endpoint for new integrations and combined relay changes.
+      deprecated: true
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+        - $ref: '#/components/parameters/RelayPathIndex'
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LegacyRelayCommandRequest'
+      responses:
+        '202':
+          description: Relay command accepted. Migrate to the multi-relay endpoint.
+          headers:
+            Deprecation:
+              schema:
+                type: string
+                enum:
+                  - 'true'
+            Link:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegacyRelayCommandEnvelope'
         '400':
           $ref: '#/components/responses/ErrorResponse'
         '401':
@@ -155,7 +197,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandEnvelope'
+                $ref: '#/components/schemas/CommandExecutionEnvelope'
         '400':
           $ref: '#/components/responses/ErrorResponse'
         '401':
@@ -185,7 +227,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandEnvelope'
+                $ref: '#/components/schemas/CommandExecutionEnvelope'
         '400':
           $ref: '#/components/responses/ErrorResponse'
         '401':
@@ -215,7 +257,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/CommandEnvelope'
+                $ref: '#/components/schemas/CommandExecutionEnvelope'
         '400':
           $ref: '#/components/responses/ErrorResponse'
         '401':
@@ -280,10 +322,17 @@ components:
       schema:
         type: integer
         minimum: 1
+    RelayPathIndex:
+      name: index
+      in: path
+      required: true
+      schema:
+        type: integer
+        minimum: 1
     IdempotencyKey:
       name: Idempotency-Key
       in: header
-      required: false
+      required: true
       schema:
         type: string
     CommandId:
@@ -340,6 +389,8 @@ components:
         - accessToken
         - tokenType
         - expiresIn
+        - clientId
+        - scopes
       properties:
         accessToken:
           type: string
@@ -350,6 +401,14 @@ components:
         expiresIn:
           type: integer
           example: 3600
+        clientId:
+          type: string
+          description: API Client ID that was authenticated.
+        scopes:
+          type: array
+          description: Permissions granted when the token was issued. Current permissions are re-evaluated on each API request.
+          items:
+            type: string
     Pagination:
       type: object
       required:
@@ -594,7 +653,28 @@ components:
         - ON
         - OFF
         - JOG
+    RelayCommand:
+      type: object
+      required:
+        - index
+        - action
+      properties:
+        index:
+          type: integer
+          minimum: 1
+        action:
+          $ref: '#/components/schemas/RelayAction'
     RelayCommandRequest:
+      type: object
+      required:
+        - relays
+      properties:
+        relays:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/RelayCommand'
+    LegacyRelayCommandRequest:
       type: object
       required:
         - action
@@ -637,13 +717,13 @@ components:
         - SUCCESS
         - FAILED
         - TIMEOUT
-    CommandType:
+    CommandOperation:
       type: string
       enum:
-        - RELAY_SET
-        - RS485_TRANSCEIVE
-        - RS485_BAUD_RATE_SET
-        - RELAY_JOG_CONFIG_SET
+        - device.relay.set
+        - device.rs485.transceive
+        - device.rs485.baudRate.set
+        - device.relay.jogConfig.set
     RS485TransceiveResult:
       type: object
       properties:
@@ -676,6 +756,7 @@ components:
       required:
         - id
         - deviceId
+        - operation
         - status
         - createdAt
       properties:
@@ -683,16 +764,63 @@ components:
           type: string
         deviceId:
           type: string
-        type:
-          $ref: '#/components/schemas/CommandType'
+        operation:
+          $ref: '#/components/schemas/CommandOperation'
+        status:
+          $ref: '#/components/schemas/CommandStatus'
+        params:
+          type: object
+          additionalProperties: true
+        result:
+          $ref: '#/components/schemas/CommandResultData'
+        createdAt:
+          type: string
+          format: date-time
+    CommandDeviceState:
+      type: object
+      required:
+        - deviceId
+        - status
+      properties:
+        deviceId:
+          type: string
+        status:
+          $ref: '#/components/schemas/DeviceStatus'
+        peripherals:
+          $ref: '#/components/schemas/Peripherals'
+        stateUpdatedAt:
+          type: string
+          format: date-time
+    CommandExecution:
+      type: object
+      required:
+        - command
+      properties:
+        command:
+          $ref: '#/components/schemas/Command'
+        state:
+          $ref: '#/components/schemas/CommandDeviceState'
+    LegacyRelayCommand:
+      type: object
+      required:
+        - id
+        - deviceId
+        - relayIndex
+        - action
+        - status
+        - createdAt
+      properties:
+        id:
+          type: string
+        deviceId:
+          type: string
         relayIndex:
           type: integer
+          minimum: 1
         action:
           $ref: '#/components/schemas/RelayAction'
         status:
           $ref: '#/components/schemas/CommandStatus'
-        result:
-          $ref: '#/components/schemas/CommandResultData'
         createdAt:
           type: string
           format: date-time
@@ -838,7 +966,7 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/DeviceConfig'
-    CommandEnvelope:
+    CommandExecutionEnvelope:
       type: object
       required:
         - code
@@ -855,7 +983,7 @@ components:
         requestId:
           type: string
         data:
-          $ref: '#/components/schemas/Command'
+          $ref: '#/components/schemas/CommandExecution'
     CommandResultEnvelope:
       type: object
       required:
@@ -874,3 +1002,21 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/CommandResult'
+    LegacyRelayCommandEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - COMMAND_ACCEPTED
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/LegacyRelayCommand'

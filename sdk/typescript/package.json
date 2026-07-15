@@ -1,6 +1,6 @@
 {
   "name": "wlte-openapi-typescript-local",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "WLTE OpenAPI TypeScript SDK",
   "author": "SVNWI <support@svnwi.com>",
   "private": true,

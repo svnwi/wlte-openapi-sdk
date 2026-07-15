@@ -70,8 +70,19 @@ device = client.devices.get(device_id)
 ## Control Relay
 
 ```python
-client.relays.set(device_id, {"index": 1, "on": True, "idempotencyKey": "unique-key"})
-client.relays.jog(device_id, {"index": 1, "idempotencyKey": "unique-key"})
+execution = client.relays.set(device_id, {"index": 1, "on": True, "idempotencyKey": "unique-key"})
+print(execution["command"], execution.get("state"))
+
+client.relays.control(
+    device_id,
+    {
+        "relays": [
+            {"index": 1, "action": "ON"},
+            {"index": 2, "action": "OFF"},
+        ],
+        "idempotencyKey": "unique-multi-key",
+    },
+)
 ```
 
 ## Query Command Result

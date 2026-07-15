@@ -9,36 +9,36 @@ type RelaysService struct {
 	client *Client
 }
 
-func (s *RelaysService) Set(ctx context.Context, deviceID string, options RelaySetOptions) (Command, error) {
-	var result Command
+func (s *RelaysService) Set(ctx context.Context, deviceID string, options RelaySetOptions) (CommandExecution, error) {
+	return s.Control(ctx, deviceID, RelayCommandOptions{
+		Relays:         []RelayCommand{{Index: options.Index, Action: relayActionForBool(options.On)}},
+		IdempotencyKey: options.IdempotencyKey,
+	})
+}
+
+func (s *RelaysService) Control(ctx context.Context, deviceID string, options RelayCommandOptions) (CommandExecution, error) {
+	var result CommandExecution
 	err := s.client.request(
 		ctx,
 		"POST",
-		fmt.Sprintf("/wlte/v1/devices/%s/relays/%d/commands", urlEscape(deviceID), options.Index),
+		fmt.Sprintf("/wlte/v1/devices/%s/relays/commands", urlEscape(deviceID)),
 		nil,
 		map[string]string{"Idempotency-Key": options.IdempotencyKey},
-		map[string]RelayAction{"action": relayActionForBool(options.On)},
+		map[string][]RelayCommand{"relays": options.Relays},
 		&result,
 	)
 	return result, err
 }
 
-func (s *RelaysService) Jog(ctx context.Context, deviceID string, options RelayJogOptions) (Command, error) {
-	var result Command
-	err := s.client.request(
-		ctx,
-		"POST",
-		fmt.Sprintf("/wlte/v1/devices/%s/relays/%d/commands", urlEscape(deviceID), options.Index),
-		nil,
-		map[string]string{"Idempotency-Key": options.IdempotencyKey},
-		map[string]RelayAction{"action": RelayActionJog},
-		&result,
-	)
-	return result, err
+func (s *RelaysService) Jog(ctx context.Context, deviceID string, options RelayJogOptions) (CommandExecution, error) {
+	return s.Control(ctx, deviceID, RelayCommandOptions{
+		Relays:         []RelayCommand{{Index: options.Index, Action: RelayActionJog}},
+		IdempotencyKey: options.IdempotencyKey,
+	})
 }
 
-func (s *RelaysService) SetJogConfig(ctx context.Context, deviceID string, options RelayJogConfigOptions) (Command, error) {
-	var result Command
+func (s *RelaysService) SetJogConfig(ctx context.Context, deviceID string, options RelayJogConfigOptions) (CommandExecution, error) {
+	var result CommandExecution
 	err := s.client.request(
 		ctx,
 		"PUT",

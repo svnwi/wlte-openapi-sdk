@@ -17,6 +17,8 @@ export interface TokenResponse {
   accessToken: string
   tokenType?: string
   expiresIn: number
+  clientId: string
+  scopes: string[]
 }
 
 export interface Pagination {
@@ -143,37 +145,49 @@ export interface ListDevicesOptions {
 export interface RelaySetOptions {
   index: number
   on: boolean
-  idempotencyKey?: string
+  idempotencyKey: string
+}
+
+export interface RelayCommand {
+  index: number
+  action: RelayAction
+}
+
+export interface RelayCommandOptions {
+  relays: RelayCommand[]
+  idempotencyKey: string
 }
 
 export interface RelayJogOptions {
   index: number
-  durationMs?: number
-  idempotencyKey?: string
+  idempotencyKey: string
 }
 
 export interface RelayJogConfigOptions {
   index: number
   durationSec: number
-  idempotencyKey?: string
+  idempotencyKey: string
 }
 
 export interface RS485TransceiveOptions {
   requestHex: string
-  idempotencyKey?: string
+  idempotencyKey: string
 }
 
 export interface RS485BaudRateOptions {
   baudRate: number
-  idempotencyKey?: string
+  idempotencyKey: string
 }
 
 export type RelayAction = 'ON' | 'OFF' | 'JOG'
 export type CommandStatus = 'SENT' | 'SUCCESS' | 'FAILED' | 'TIMEOUT'
-export type CommandType = 'RELAY_SET' | 'RS485_TRANSCEIVE' | 'RS485_BAUD_RATE_SET' | 'RELAY_JOG_CONFIG_SET'
+export type CommandOperation =
+  | 'device.relay.set'
+  | 'device.rs485.transceive'
+  | 'device.rs485.baudRate.set'
+  | 'device.relay.jogConfig.set'
 
 export interface RS485TransceiveResult {
-  requestHex: string
   responseHex?: string
 }
 
@@ -191,18 +205,26 @@ export type CommandResultData = RS485TransceiveResult | RS485BaudRateResult | Re
 export interface Command {
   id: string
   deviceId: string
-  type?: CommandType
-  relayIndex?: number
-  action?: RelayAction
-  status?: CommandStatus
+  operation: CommandOperation
+  status: CommandStatus
+  params?: Record<string, unknown>
   result?: CommandResultData
-  createdAt?: string
+  createdAt: string
   [key: string]: unknown
 }
 
-export interface CommandResult extends Command {
-  status: CommandStatus
-  createdAt: string
+export type CommandResult = Command
+
+export interface CommandDeviceState {
+  deviceId: string
+  status: 'ONLINE' | 'OFFLINE'
+  peripherals?: Peripherals
+  stateUpdatedAt?: string
+}
+
+export interface CommandExecution {
+  command: Command
+  state?: CommandDeviceState
 }
 
 export interface RequestOptions {

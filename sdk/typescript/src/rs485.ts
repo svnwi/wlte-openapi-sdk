@@ -1,11 +1,11 @@
 import type { WlteClient } from './client.js'
-import type { ApiEnvelope, Command, RS485BaudRateOptions, RS485TransceiveOptions } from './types.js'
+import type { ApiEnvelope, CommandExecution, RS485BaudRateOptions, RS485TransceiveOptions } from './types.js'
 
 export class RS485Api {
   constructor(private readonly client: WlteClient) {}
 
-  async transceive(deviceId: string, options: RS485TransceiveOptions): Promise<Command> {
-    const response = await this.client.request<ApiEnvelope<Command>>(
+  async transceive(deviceId: string, options: RS485TransceiveOptions): Promise<CommandExecution> {
+    const response = await this.client.request<ApiEnvelope<CommandExecution>>(
       `/wlte/v1/devices/${encodeURIComponent(deviceId)}/rs485/transceive`,
       {
         method: 'POST',
@@ -20,8 +20,8 @@ export class RS485Api {
     return response.data
   }
 
-  async setBaudRate(deviceId: string, options: RS485BaudRateOptions): Promise<Command> {
-    const response = await this.client.request<ApiEnvelope<Command>>(
+  async setBaudRate(deviceId: string, options: RS485BaudRateOptions): Promise<CommandExecution> {
+    const response = await this.client.request<ApiEnvelope<CommandExecution>>(
       `/wlte/v1/devices/${encodeURIComponent(deviceId)}/rs485/baud-rate`,
       {
         method: 'PUT',
