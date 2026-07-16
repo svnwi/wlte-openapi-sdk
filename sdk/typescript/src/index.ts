@@ -1,6 +1,8 @@
 export { WlteClient } from './client.js'
 export { WlteApiError } from './errors.js'
 export type {
+  AddDeviceOptions,
+  AddDeviceResult,
   Command,
   CommandDeviceState,
   CommandExecution,
@@ -16,6 +18,8 @@ export type {
   DeviceProfileList,
   DeviceStats,
   ListDevicesOptions,
+  ModifyDevicePasswordOptions,
+  ModifyDevicePasswordResult,
   OperationSpecs,
   Pagination,
   Peripherals,
@@ -27,6 +31,7 @@ export type {
   RelayJogConfigResult,
   RelayJogOptions,
   RelaySetOptions,
+  RemoveDeviceResult,
   RS485BaudRateOptions,
   RS485BaudRateResult,
   RS485Config,

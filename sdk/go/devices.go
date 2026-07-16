@@ -34,3 +34,28 @@ func (s *DevicesService) GetConfig(ctx context.Context, deviceID string) (Device
 	err := s.client.request(ctx, "GET", "/wlte/v1/devices/"+urlEscape(deviceID)+"/config", nil, nil, nil, &result)
 	return result, err
 }
+
+func (s *DevicesService) Add(ctx context.Context, options AddDeviceOptions) (AddDeviceResult, error) {
+	var result AddDeviceResult
+	err := s.client.request(ctx, "POST", "/wlte/v1/devices", nil, nil, map[string]string{
+		"deviceId": options.DeviceID,
+		"password": options.Password,
+		"name":     options.Name,
+	}, &result)
+	return result, err
+}
+
+func (s *DevicesService) Remove(ctx context.Context, deviceID string) (RemoveDeviceResult, error) {
+	var result RemoveDeviceResult
+	err := s.client.request(ctx, "DELETE", "/wlte/v1/devices/"+urlEscape(deviceID), nil, nil, nil, &result)
+	return result, err
+}
+
+func (s *DevicesService) ModifyPassword(ctx context.Context, deviceID string, options ModifyDevicePasswordOptions) (ModifyDevicePasswordResult, error) {
+	var result ModifyDevicePasswordResult
+	err := s.client.request(ctx, "PUT", "/wlte/v1/devices/"+urlEscape(deviceID)+"/password", nil, nil, map[string]string{
+		"oldPassword": options.OldPassword,
+		"newPassword": options.NewPassword,
+	}, &result)
+	return result, err
+}

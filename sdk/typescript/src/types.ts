@@ -64,6 +64,7 @@ export interface Peripherals {
 }
 
 export interface DeviceConfig {
+  deviceId: string
   relay?: RelayConfig
   rs485?: RS485Config
   updatedAt?: string
@@ -93,7 +94,33 @@ export interface DeviceProfileCapabilities {
   digitalInputCount?: number
   analogInputCount?: number
   sensorInterfaces?: SensorInterface[]
+  supportedOperations?: string[]
   operationSpecs?: OperationSpecs
+}
+
+export interface AddDeviceOptions {
+  deviceId: string
+  password: string
+  name?: string
+}
+
+export interface AddDeviceResult {
+  deviceId: string
+  name?: string
+}
+
+export interface RemoveDeviceResult {
+  deviceId: string
+}
+
+export interface ModifyDevicePasswordOptions {
+  oldPassword: string
+  newPassword: string
+}
+
+export interface ModifyDevicePasswordResult {
+  deviceId: string
+  updated: boolean
 }
 
 export interface SensorInterface {

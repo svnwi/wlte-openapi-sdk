@@ -100,7 +100,7 @@ class WlteClient:
             return self._send(path, method=method, query=query, headers=headers, body=body, token=token)
         except WlteApiError as error:
             if is_auth_expired(error):
-                refreshed_token = self._auth.get_token(force_refresh=True)
+                refreshed_token = self._auth.get_token(rejected_token=token)
                 return self._send(path, method=method, query=query, headers=headers, body=body, token=refreshed_token)
             raise
 
@@ -183,6 +183,7 @@ class WlteClient:
                 message=str(payload.get("message") or response.reason),
                 data=payload.get("data"),
                 retry_after=retry_after,
+                request_id=str(payload.get("requestId")) if payload.get("requestId") else None,
             )
 
         return WlteApiError(

@@ -81,7 +81,7 @@ describe('WlteClient', () => {
       }
 
       return jsonResponse(
-        { code: 'RATE_LIMITED', message: 'too many requests', data: null },
+        { code: 'RATE_LIMITED', message: 'too many requests', requestId: 'req-rate', data: null },
         { status: 429, headers: { 'Retry-After': '5' } },
       )
     }
@@ -97,6 +97,7 @@ describe('WlteClient', () => {
       status: 429,
       code: 'RATE_LIMITED',
       retryAfter: '5',
+      requestId: 'req-rate',
     })
   })
 
@@ -199,6 +200,7 @@ describe('WlteClient', () => {
               deviceType: 'RL1',
               capabilities: {
                 relayCount: 1,
+                supportedOperations: ['device.relay.set'],
                 operationSpecs: { relay: { actions: ['ON', 'OFF', 'JOG'] } },
               },
             },
@@ -216,6 +218,60 @@ describe('WlteClient', () => {
 
     const result = await client.profiles.list()
     expect(result.profiles[0]?.deviceType).toBe('RL1')
+    expect(result.profiles[0]?.capabilities.supportedOperations).toEqual(['device.relay.set'])
+  })
+
+  it('shares concurrent token requests', async () => {
+    let tokenCalls = 0
+    const fetchMock: typeof fetch = async (input) => {
+      const url = String(input)
+      if (url.endsWith('/wlte/v1/auth/token')) {
+        tokenCalls += 1
+        await new Promise((resolve) => setTimeout(resolve, 10))
+        return jsonResponse({ code: 'SUCCESS', data: { accessToken: 'shared-token', expiresIn: 3600 } })
+      }
+      return jsonResponse({
+        code: 'SUCCESS',
+        data: {
+          devices: [],
+          stats: { total: 0, online: 0, offline: 0 },
+          pagination: { page: 1, pageSize: 20, total: 0, totalPages: 0, hasNext: false, hasPrev: false },
+        },
+      })
+    }
+    const client = new WlteClient({ clientId: 'client', clientSecret: 'secret', baseUrl: 'https://api.test', fetch: fetchMock })
+
+    await Promise.all(Array.from({ length: 10 }, () => client.devices.list()))
+
+    expect(tokenCalls).toBe(1)
+  })
+
+  it('supports device management methods', async () => {
+    const calls: Array<{ url: string; init?: RequestInit }> = []
+    const fetchMock: typeof fetch = async (input, init) => {
+      const url = String(input)
+      calls.push({ url, init })
+      if (url.endsWith('/wlte/v1/auth/token')) {
+        return jsonResponse({ code: 'SUCCESS', data: { accessToken: 'token', expiresIn: 3600 } })
+      }
+      if (init?.method === 'POST') {
+        return jsonResponse({ code: 'SUCCESS', data: { deviceId: 'dev-1', name: 'Demo' } }, { status: 201 })
+      }
+      if (init?.method === 'DELETE') {
+        return jsonResponse({ code: 'SUCCESS', data: { deviceId: 'dev-1' } })
+      }
+      return jsonResponse({ code: 'SUCCESS', data: { deviceId: 'dev-1', updated: true } })
+    }
+    const client = new WlteClient({ clientId: 'client', clientSecret: 'secret', baseUrl: 'https://api.test', fetch: fetchMock })
+
+    await client.devices.add({ deviceId: 'dev-1', password: '1234', name: 'Demo' })
+    await client.devices.remove('dev-1')
+    await client.devices.modifyPassword('dev-1', { oldPassword: '1234', newPassword: '5678' })
+
+    expect(calls[1]?.init?.method).toBe('POST')
+    expect(calls[2]?.init?.method).toBe('DELETE')
+    expect(calls[3]?.init?.method).toBe('PUT')
+    expect(calls[3]?.init?.body).toBe(JSON.stringify({ oldPassword: '1234', newPassword: '5678' }))
   })
 
 

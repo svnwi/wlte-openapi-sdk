@@ -1,8 +1,12 @@
 import json
+import threading
+import time
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 
 from wlte_openapi import WlteApiError, WlteClient
 from wlte_openapi.client import TransportResponse
+from wlte_openapi.auth import AuthManager
 
 
 class FakeTransport:
@@ -79,7 +83,7 @@ class WlteClientTest(unittest.TestCase):
             [
                 response({"code": "SUCCESS", "message": "ok", "data": {"accessToken": "token", "expiresIn": 3600}}),
                 response(
-                    {"code": "RATE_LIMITED", "message": "too many requests", "data": None},
+                    {"code": "RATE_LIMITED", "message": "too many requests", "requestId": "req-rate", "data": None},
                     status=429,
                     headers={"Retry-After": "5"},
                 ),
@@ -98,6 +102,7 @@ class WlteClientTest(unittest.TestCase):
         self.assertEqual(context.exception.status, 429)
         self.assertEqual(context.exception.code, "RATE_LIMITED")
         self.assertEqual(context.exception.retry_after, "5")
+        self.assertEqual(context.exception.request_id, "req-rate")
 
     def test_maps_relay_set_requests_to_relay_command_action(self):
         transport = FakeTransport(
@@ -193,7 +198,8 @@ class WlteClientTest(unittest.TestCase):
                                 {
                                     "deviceType": "RL1",
                                     "capabilities": {
-                                        "relayCount": 1,
+                                    "relayCount": 1,
+                                    "supportedOperations": ["device.relay.set"],
                                         "operationSpecs": {"relay": {"actions": ["ON", "OFF", "JOG"]}},
                                     },
                                 }
@@ -213,6 +219,47 @@ class WlteClientTest(unittest.TestCase):
         result = client.profiles.list()
 
         self.assertEqual(result["profiles"][0]["deviceType"], "RL1")
+        self.assertEqual(result["profiles"][0]["capabilities"]["supportedOperations"], ["device.relay.set"])
+
+    def test_supports_device_management_methods(self):
+        transport = FakeTransport(
+            [
+                response({"code": "SUCCESS", "data": {"accessToken": "token", "expiresIn": 3600}}),
+                response({"code": "SUCCESS", "data": {"deviceId": "dev-1", "name": "Demo"}}, status=201),
+                response({"code": "SUCCESS", "data": {"deviceId": "dev-1"}}),
+                response({"code": "SUCCESS", "data": {"deviceId": "dev-1", "updated": True}}),
+            ]
+        )
+        client = WlteClient(client_id="client", client_secret="secret", base_url="https://api.test", transport=transport)
+
+        client.devices.add({"deviceId": "dev-1", "password": "1234", "name": "Demo"})
+        client.devices.remove("dev-1")
+        client.devices.modify_password("dev-1", {"oldPassword": "1234", "newPassword": "5678"})
+
+        self.assertEqual(transport.calls[1]["method"], "POST")
+        self.assertEqual(transport.calls[2]["method"], "DELETE")
+        self.assertEqual(transport.calls[3]["method"], "PUT")
+        self.assertEqual(json.loads(transport.calls[3]["body"]), {"oldPassword": "1234", "newPassword": "5678"})
+
+    def test_auth_manager_shares_concurrent_token_request(self):
+        class ConcurrentTransport:
+            def __init__(self):
+                self.calls = 0
+                self.lock = threading.Lock()
+
+            def request_without_auth(self, path, *, method, body=None):
+                with self.lock:
+                    self.calls += 1
+                time.sleep(0.02)
+                return {"code": "SUCCESS", "data": {"accessToken": "shared-token", "expiresIn": 3600}}
+
+        transport = ConcurrentTransport()
+        auth = AuthManager(client_id="client", client_secret="secret", transport=transport)
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            tokens = list(executor.map(lambda _: auth.get_token(), range(10)))
+
+        self.assertEqual(tokens, ["shared-token"] * 10)
+        self.assertEqual(transport.calls, 1)
 
 
     def test_gets_device_config(self):

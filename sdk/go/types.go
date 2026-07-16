@@ -103,6 +103,7 @@ type RS485Config struct {
 }
 
 type DeviceConfig struct {
+	DeviceID  string       `json:"deviceId"`
 	Relay     *RelayConfig `json:"relay,omitempty"`
 	RS485     *RS485Config `json:"rs485,omitempty"`
 	UpdatedAt string       `json:"updatedAt,omitempty"`
@@ -122,11 +123,12 @@ type OperationSpecs struct {
 }
 
 type DeviceProfileCapabilities struct {
-	RelayCount        *int              `json:"relayCount,omitempty"`
-	DigitalInputCount *int              `json:"digitalInputCount,omitempty"`
-	AnalogInputCount  *int              `json:"analogInputCount,omitempty"`
-	SensorInterfaces  []SensorInterface `json:"sensorInterfaces,omitempty"`
-	OperationSpecs    *OperationSpecs   `json:"operationSpecs,omitempty"`
+	RelayCount          *int              `json:"relayCount,omitempty"`
+	DigitalInputCount   *int              `json:"digitalInputCount,omitempty"`
+	AnalogInputCount    *int              `json:"analogInputCount,omitempty"`
+	SensorInterfaces    []SensorInterface `json:"sensorInterfaces,omitempty"`
+	SupportedOperations []string          `json:"supportedOperations,omitempty"`
+	OperationSpecs      *OperationSpecs   `json:"operationSpecs,omitempty"`
 }
 
 type DeviceProfile struct {
@@ -241,4 +243,29 @@ type RS485TransceiveOptions struct {
 type RS485BaudRateOptions struct {
 	BaudRate       int
 	IdempotencyKey string
+}
+
+type AddDeviceOptions struct {
+	DeviceID string
+	Password string
+	Name     string
+}
+
+type AddDeviceResult struct {
+	DeviceID string `json:"deviceId"`
+	Name     string `json:"name,omitempty"`
+}
+
+type RemoveDeviceResult struct {
+	DeviceID string `json:"deviceId"`
+}
+
+type ModifyDevicePasswordOptions struct {
+	OldPassword string
+	NewPassword string
+}
+
+type ModifyDevicePasswordResult struct {
+	DeviceID string `json:"deviceId"`
+	Updated  bool   `json:"updated"`
 }

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: WLTE OpenAPI
-  version: 0.1.0
+  version: 0.3.0
   description: HTTP API surface used by the WLTE SDK clients.
 servers:
   - url: https://openapi.svnwi.com
@@ -33,6 +33,30 @@ paths:
           $ref: '#/components/responses/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/ws/ticket:
+    post:
+      operationId: createWebSocketTicket
+      summary: Create a one-time WebSocket ticket.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: One-time WebSocket ticket response.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WebSocketTicketEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
   /wlte/v1/devices:
     get:
       operationId: listDevices
@@ -48,6 +72,32 @@ paths:
               schema:
                 $ref: '#/components/schemas/DeviceListEnvelope'
         '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+    post:
+      operationId: addDevice
+      summary: Add a device to the authenticated account.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddDeviceRequest'
+      responses:
+        '201':
+          description: Device added.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddDeviceEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
           $ref: '#/components/responses/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimitResponse'
@@ -82,6 +132,57 @@ paths:
         '401':
           $ref: '#/components/responses/ErrorResponse'
         '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+    delete:
+      operationId: removeDevice
+      summary: Remove a device from the authenticated account.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      responses:
+        '200':
+          description: Device removed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RemoveDeviceEnvelope'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '429':
+          $ref: '#/components/responses/RateLimitResponse'
+  /wlte/v1/devices/{deviceId}/password:
+    put:
+      operationId: modifyDevicePassword
+      summary: Modify a device password.
+      parameters:
+        - $ref: '#/components/parameters/DeviceId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyDevicePasswordRequest'
+      responses:
+        '200':
+          description: Device password modified.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModifyDevicePasswordEnvelope'
+        '400':
+          $ref: '#/components/responses/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/ErrorResponse'
+        '403':
+          $ref: '#/components/responses/ErrorResponse'
+        '404':
+          $ref: '#/components/responses/ErrorResponse'
+        '409':
           $ref: '#/components/responses/ErrorResponse'
         '429':
           $ref: '#/components/responses/RateLimitResponse'
@@ -366,9 +467,12 @@ components:
         - COMMAND_ACCEPTED
         - AUTH_EXPIRED
         - AUTH_INVALID
+        - AUTH_SCOPE_DENIED
         - INVALID_REQUEST
         - DEVICE_OFFLINE
         - DEVICE_NOT_FOUND
+        - DEVICE_ALREADY_EXISTS
+        - INVALID_DEVICE_PASSWORD
         - COMMAND_NOT_FOUND
         - COMMAND_REJECTED
         - RATE_LIMITED
@@ -409,6 +513,19 @@ components:
           description: Permissions granted when the token was issued. Current permissions are re-evaluated on each API request.
           items:
             type: string
+    WebSocketTicket:
+      type: object
+      required:
+        - ticket
+        - expiresIn
+      properties:
+        ticket:
+          type: string
+          description: One-time credential used only for WebSocket connection establishment.
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: Ticket lifetime in seconds.
     Pagination:
       type: object
       required:
@@ -557,6 +674,11 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SensorInterface'
+        supportedOperations:
+          type: array
+          items:
+            type: string
+          description: Stable operation names supported by this device type.
         operationSpecs:
           $ref: '#/components/schemas/OperationSpecs'
     DeviceProfile:
@@ -647,6 +769,61 @@ components:
           format: date-time
         peripherals:
           $ref: '#/components/schemas/Peripherals'
+    AddDeviceRequest:
+      type: object
+      required:
+        - deviceId
+        - password
+      properties:
+        deviceId:
+          type: string
+        password:
+          type: string
+          minLength: 4
+          maxLength: 4
+        name:
+          type: string
+          maxLength: 16
+    AddDeviceResult:
+      type: object
+      required:
+        - deviceId
+      properties:
+        deviceId:
+          type: string
+        name:
+          type: string
+    RemoveDeviceResult:
+      type: object
+      required:
+        - deviceId
+      properties:
+        deviceId:
+          type: string
+    ModifyDevicePasswordRequest:
+      type: object
+      required:
+        - oldPassword
+        - newPassword
+      properties:
+        oldPassword:
+          type: string
+          minLength: 4
+          maxLength: 4
+        newPassword:
+          type: string
+          minLength: 4
+          maxLength: 4
+    ModifyDevicePasswordResult:
+      type: object
+      required:
+        - deviceId
+        - updated
+      properties:
+        deviceId:
+          type: string
+        updated:
+          type: boolean
     RelayAction:
       type: string
       enum:
@@ -870,6 +1047,78 @@ components:
           type: string
         data:
           $ref: '#/components/schemas/TokenResponse'
+    WebSocketTicketEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/WebSocketTicket'
+    AddDeviceEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/AddDeviceResult'
+    RemoveDeviceEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/RemoveDeviceResult'
+    ModifyDevicePasswordEnvelope:
+      type: object
+      required:
+        - code
+        - message
+        - requestId
+        - data
+      properties:
+        code:
+          type: string
+          enum:
+            - SUCCESS
+        message:
+          type: string
+        requestId:
+          type: string
+        data:
+          $ref: '#/components/schemas/ModifyDevicePasswordResult'
     DeviceList:
       type: object
       required:

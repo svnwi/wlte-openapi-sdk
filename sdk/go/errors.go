@@ -11,6 +11,7 @@ type APIError struct {
 	Message    string
 	Data       json.RawMessage
 	RetryAfter string
+	RequestID  string
 }
 
 func (e *APIError) Error() string {

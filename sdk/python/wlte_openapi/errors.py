@@ -10,6 +10,7 @@ class WlteApiError(Exception):
         message: str,
         data: Optional[object] = None,
         retry_after: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> None:
         super().__init__(message)
         self.status = status
@@ -17,6 +18,7 @@ class WlteApiError(Exception):
         self.message = message
         self.data = data
         self.retry_after = retry_after
+        self.request_id = request_id
 
 
 def is_auth_expired(error: BaseException) -> bool:

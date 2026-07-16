@@ -2,6 +2,7 @@ package wlteopenapi
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -18,6 +19,12 @@ type authManager struct {
 	requester     tokenRequester
 	accessToken   string
 	refreshAt     time.Time
+	refresh       *tokenRefresh
+}
+
+type tokenRefresh struct {
+	done chan struct{}
+	err  error
 }
 
 func newAuthManager(clientID, clientSecret string, refreshBuffer time.Duration, requester tokenRequester) *authManager {
@@ -29,13 +36,33 @@ func newAuthManager(clientID, clientSecret string, refreshBuffer time.Duration, 
 	}
 }
 
-func (a *authManager) getToken(ctx context.Context, forceRefresh bool) (string, error) {
+// getToken returns the cached token unless rejectedToken is the token rejected
+// by the server. Concurrent cache misses share one token request.
+func (a *authManager) getToken(ctx context.Context, rejectedToken string) (string, error) {
 	a.mu.Lock()
-	if !forceRefresh && a.accessToken != "" && time.Now().Before(a.refreshAt) {
+	if a.accessToken != "" && a.accessToken != rejectedToken && time.Now().Before(a.refreshAt) {
 		token := a.accessToken
 		a.mu.Unlock()
 		return token, nil
 	}
+	if a.refresh != nil {
+		refresh := a.refresh
+		a.mu.Unlock()
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		case <-refresh.done:
+			if refresh.err != nil {
+				return "", refresh.err
+			}
+			a.mu.Lock()
+			token := a.accessToken
+			a.mu.Unlock()
+			return token, nil
+		}
+	}
+	refresh := &tokenRefresh{done: make(chan struct{})}
+	a.refresh = refresh
 	a.mu.Unlock()
 
 	var token TokenResponse
@@ -51,13 +78,35 @@ func (a *authManager) getToken(ctx context.Context, forceRefresh bool) (string, 
 		},
 		&token,
 	)
+	if err == nil && token.AccessToken == "" {
+		err = fmt.Errorf("token response did not contain accessToken")
+	}
+	if err == nil && token.ExpiresIn <= 0 {
+		err = fmt.Errorf("token response expiresIn must be greater than zero")
+	}
+
+	now := time.Now()
+	a.mu.Lock()
+	if err == nil {
+		a.accessToken = token.AccessToken
+		a.refreshAt = tokenRefreshAt(now, token.ExpiresIn, a.refreshBuffer)
+	}
+	refresh.err = err
+	a.refresh = nil
+	close(refresh.done)
+	a.mu.Unlock()
 	if err != nil {
 		return "", err
 	}
+	return token.AccessToken, nil
+}
 
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.accessToken = token.AccessToken
-	a.refreshAt = time.Now().Add(time.Duration(token.ExpiresIn) * time.Second).Add(-a.refreshBuffer)
-	return a.accessToken, nil
+func tokenRefreshAt(now time.Time, expiresIn int, configuredBuffer time.Duration) time.Time {
+	ttl := time.Duration(expiresIn) * time.Second
+	buffer := configuredBuffer
+	maxBuffer := ttl / 5
+	if buffer > maxBuffer {
+		buffer = maxBuffer
+	}
+	return now.Add(ttl - buffer)
 }

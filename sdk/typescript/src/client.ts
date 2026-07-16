@@ -61,7 +61,7 @@ export class WlteClient {
       return await this.send<T>(path, options, token)
     } catch (error) {
       if (retryOnAuthExpired && isAuthExpired(error)) {
-        const refreshedToken = await this.auth.getToken(true)
+        const refreshedToken = await this.auth.getToken(token)
         return this.send<T>(path, options, refreshedToken)
       }
       throw error
@@ -132,13 +132,14 @@ function toApiError(response: Response, payload: unknown): WlteApiError {
   const retryAfter = response.headers.get('Retry-After') ?? undefined
 
   if (payload && typeof payload === 'object') {
-    const envelope = payload as { code?: unknown; message?: unknown; data?: unknown }
+    const envelope = payload as { code?: unknown; message?: unknown; data?: unknown; requestId?: unknown }
     return new WlteApiError({
       status: response.status,
       code: typeof envelope.code === 'string' ? envelope.code : response.status === 429 ? 'RATE_LIMITED' : 'HTTP_ERROR',
       message: typeof envelope.message === 'string' ? envelope.message : response.statusText,
       data: envelope.data,
       retryAfter,
+      requestId: typeof envelope.requestId === 'string' ? envelope.requestId : undefined,
     })
   }
 

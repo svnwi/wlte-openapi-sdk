@@ -94,6 +94,7 @@ class RS485Config(TypedDict, total=False):
 
 
 class DeviceConfig(TypedDict, total=False):
+    deviceId: str
     relay: RelayConfig
     rs485: RS485Config
     updatedAt: str
@@ -117,7 +118,36 @@ class DeviceProfileCapabilities(TypedDict, total=False):
     digitalInputCount: int
     analogInputCount: int
     sensorInterfaces: list[SensorInterface]
+    supportedOperations: list[str]
     operationSpecs: OperationSpecs
+
+
+class _AddDeviceRequired(TypedDict):
+    deviceId: str
+    password: str
+
+
+class AddDeviceOptions(_AddDeviceRequired, total=False):
+    name: str
+
+
+class AddDeviceResult(TypedDict, total=False):
+    deviceId: str
+    name: str
+
+
+class RemoveDeviceResult(TypedDict):
+    deviceId: str
+
+
+class ModifyDevicePasswordOptions(TypedDict):
+    oldPassword: str
+    newPassword: str
+
+
+class ModifyDevicePasswordResult(TypedDict):
+    deviceId: str
+    updated: bool
 
 
 class DeviceProfile(TypedDict):

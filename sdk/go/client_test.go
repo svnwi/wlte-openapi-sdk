@@ -107,7 +107,7 @@ func TestParsesRateLimitErrors(t *testing.T) {
 				if req.URL.Path == "/wlte/v1/auth/token" {
 					return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
 				}
-				return jsonResponse(429, `{"code":"RATE_LIMITED","message":"too many requests","data":null}`, map[string]string{"Retry-After": "5"}), nil
+				return jsonResponse(429, `{"code":"RATE_LIMITED","message":"too many requests","requestId":"req-rate","data":null}`, map[string]string{"Retry-After": "5"}), nil
 			}),
 		},
 	})
@@ -124,7 +124,7 @@ func TestParsesRateLimitErrors(t *testing.T) {
 	if !ok {
 		t.Fatalf("unexpected error type: %T", err)
 	}
-	if apiErr.Status != 429 || apiErr.Code != "RATE_LIMITED" || apiErr.RetryAfter != "5" {
+	if apiErr.Status != 429 || apiErr.Code != "RATE_LIMITED" || apiErr.RetryAfter != "5" || apiErr.RequestID != "req-rate" {
 		t.Fatalf("unexpected api error: %+v", apiErr)
 	}
 }
@@ -222,7 +222,7 @@ func TestListProfiles(t *testing.T) {
 				if req.URL.Path == "/wlte/v1/auth/token" {
 					return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"accessToken":"token","expiresIn":3600,"tokenType":"Bearer"}}`, nil), nil
 				}
-				return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"profiles":[{"deviceType":"RL1","capabilities":{"relayCount":1,"operationSpecs":{"relay":{"actions":["ON","OFF","JOG"]}}}}]}}`, nil), nil
+				return jsonResponse(200, `{"code":"SUCCESS","message":"ok","data":{"profiles":[{"deviceType":"RL1","capabilities":{"relayCount":1,"supportedOperations":["device.relay.set"],"operationSpecs":{"relay":{"actions":["ON","OFF","JOG"]}}}}]}}`, nil), nil
 			}),
 		},
 	})
@@ -236,6 +236,9 @@ func TestListProfiles(t *testing.T) {
 	}
 	if result.Profiles[0].DeviceType != "RL1" {
 		t.Fatalf("unexpected profile type: %s", result.Profiles[0].DeviceType)
+	}
+	if len(result.Profiles[0].Capabilities.SupportedOperations) != 1 || result.Profiles[0].Capabilities.SupportedOperations[0] != "device.relay.set" {
+		t.Fatalf("unexpected supported operations: %+v", result.Profiles[0].Capabilities.SupportedOperations)
 	}
 }
 

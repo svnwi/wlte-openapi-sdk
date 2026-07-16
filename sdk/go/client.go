@@ -33,11 +33,12 @@ type Client struct {
 	httpClient *http.Client
 	auth       *authManager
 
-	Devices  *DevicesService
-	Profiles *ProfilesService
-	Relays   *RelaysService
-	Commands *CommandsService
-	RS485    *RS485Service
+	Devices   *DevicesService
+	Profiles  *ProfilesService
+	Relays    *RelaysService
+	Commands  *CommandsService
+	RS485     *RS485Service
+	WebSocket *WebSocketService
 }
 
 func NewClient(options ClientOptions) (*Client, error) {
@@ -59,6 +60,9 @@ func NewClient(options ClientOptions) (*Client, error) {
 	}
 
 	refreshBuffer := options.TokenRefreshBuffer
+	if refreshBuffer < 0 {
+		return nil, fmt.Errorf("token refresh buffer must not be negative")
+	}
 	if refreshBuffer == 0 {
 		refreshBuffer = time.Minute
 	}
@@ -73,11 +77,12 @@ func NewClient(options ClientOptions) (*Client, error) {
 	client.Relays = &RelaysService{client: client}
 	client.Commands = &CommandsService{client: client}
 	client.RS485 = &RS485Service{client: client}
+	client.WebSocket = &WebSocketService{client: client}
 	return client, nil
 }
 
 func (c *Client) request(ctx context.Context, method, path string, query map[string]string, headers map[string]string, body any, out any) error {
-	token, err := c.auth.getToken(ctx, false)
+	token, err := c.auth.getToken(ctx, "")
 	if err != nil {
 		return err
 	}
@@ -90,7 +95,7 @@ func (c *Client) request(ctx context.Context, method, path string, query map[str
 		return err
 	}
 
-	token, err = c.auth.getToken(ctx, true)
+	token, err = c.auth.getToken(ctx, token)
 	if err != nil {
 		return err
 	}
@@ -199,6 +204,7 @@ func decodeResponse(resp *http.Response, responseBody []byte, out any) error {
 			Message:    envelope.Message,
 			Data:       envelope.Data,
 			RetryAfter: resp.Header.Get("Retry-After"),
+			RequestID:  envelope.RequestID,
 		}
 	}
 
@@ -209,6 +215,7 @@ func decodeResponse(resp *http.Response, responseBody []byte, out any) error {
 			Message:    envelope.Message,
 			Data:       envelope.Data,
 			RetryAfter: resp.Header.Get("Retry-After"),
+			RequestID:  envelope.RequestID,
 		}
 	}
 
