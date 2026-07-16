@@ -44,7 +44,9 @@ const client = new WlteClient({
 })
 ```
 
-The SDK requests access tokens automatically, caches them in memory, refreshes before expiry when possible, and retries once after `401 AUTH_EXPIRED`.
+The SDK requests access tokens automatically, caches them in memory, coalesces
+concurrent refreshes, refreshes before expiry when possible, and retries once
+after `401 AUTH_EXPIRED`.
 
 ## List Devices
 
@@ -64,6 +66,14 @@ console.log(profiles.profiles)
 
 ```ts
 const device = await client.devices.get(deviceId)
+```
+
+## Manage Devices
+
+```ts
+await client.devices.add({ deviceId, password: '1234', name: 'Demo' })
+await client.devices.modifyPassword(deviceId, { oldPassword: '1234', newPassword: '5678' })
+await client.devices.remove(deviceId)
 ```
 
 ## Control Relay
@@ -96,7 +106,7 @@ try {
   await client.devices.list()
 } catch (error) {
   if (error instanceof WlteApiError) {
-    console.error(error.status, error.code, error.message, error.data)
+    console.error(error.status, error.code, error.message, error.requestId, error.data)
   }
 }
 ```
@@ -109,10 +119,10 @@ HTTP `429` and `RATE_LIMITED` responses are exposed as `WlteApiError`. If the se
 
 This SDK tracks `openapi/openapi.yaml` in this repository and is currently intended for direct repository-based integration.
 
-## WebSocket Status
+## WebSocket Coverage
 
-WebSocket support is not included in the current SDK version.
-It will be added after the WLTE OpenAPI WebSocket protocol is finalized.
+This package currently provides REST APIs only. Use the Go SDK when WebSocket
+requests and events are required.
 
 ## Run Examples
 

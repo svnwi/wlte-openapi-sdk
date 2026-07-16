@@ -49,13 +49,14 @@ cd sdk/go
 cp .env.example .env
 go run ./examples/list_devices
 go run ./examples/list_profiles
+go run ./examples/websocket
 ```
 
 ## Step 3: Integrate into Your Own Service
 
 - TypeScript: build and reference `sdk/typescript` as a local package
 - Python: add `sdk/python` to `PYTHONPATH` or vendor `wlte_openapi`
-- Go: use `github.com/svnwi/wlte-openapi-sdk/sdk/go` with a temporary local `replace` directive if needed
+- Go: `go get github.com/svnwi/wlte-openapi-sdk/sdk/go@v0.3.0`
 
 ## Support
 

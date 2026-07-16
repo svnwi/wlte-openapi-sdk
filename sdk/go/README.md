@@ -2,7 +2,11 @@
 
 ## Local Usage
 
-Use this SDK from the repository for now. Public package publishing is intentionally not enabled yet.
+Install the nested Go module directly from the repository:
+
+```sh
+go get github.com/svnwi/wlte-openapi-sdk/sdk/go@v0.3.0
+```
 
 ## Integrate From Another Project
 
@@ -73,10 +77,35 @@ execution, err := client.Relays.Control(context.Background(), deviceID, wlteopen
 
 - Requests tokens automatically with client credentials.
 - Caches tokens in memory only.
+- Coalesces concurrent token requests and refreshes.
 - Refreshes before expiry when possible.
 - Retries once after `401 AUTH_EXPIRED`.
 - Returns `APIError` for HTTP and business errors.
+- Preserves the server `requestId` on `APIError`.
 - Exposes `RetryAfter` for rate limit responses when provided.
+
+## WebSocket
+
+```go
+session, err := client.WebSocket.Connect(ctx, wlteopenapi.WebSocketConnectOptions{})
+if err != nil {
+    log.Fatal(err)
+}
+defer session.Close()
+
+device, err := session.GetDeviceState(ctx, deviceID)
+if err != nil {
+    log.Fatal(err)
+}
+
+for event := range session.Events() {
+    log.Printf("event topic=%s data=%s", event.Topic, event.Data)
+}
+```
+
+The SDK acquires the WebSocket ticket internally and does not expose it to
+application code. Consume `Events()` continuously and monitor `DroppedEvents()`
+if event delivery is business-critical.
 
 ## Run Examples
 
@@ -86,9 +115,10 @@ go run ./examples/list_devices
 go run ./examples/list_profiles
 go run ./examples/get_device
 go run ./examples/control_relay
+go run ./examples/websocket
 ```
 
-## WebSocket Status
+## Versioning
 
-WebSocket support is not included in the current SDK version.
-It will be added after the WLTE OpenAPI WebSocket protocol is finalized.
+This SDK is a nested module. Releases use tags such as `sdk/go/v0.3.0`, created
+with `scripts/tag-go-sdk.sh v0.3.0` from the repository root.

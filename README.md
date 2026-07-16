@@ -1,6 +1,6 @@
 # WLTE OpenAPI SDK
 
-Developer SDKs and Bruno examples for integrating with the WLTE OpenAPI HTTP platform.
+Developer SDKs and Bruno examples for integrating with WLTE OpenAPI.
 
 This repository is the public integration entry point for WLTE OpenAPI:
 
@@ -11,14 +11,17 @@ This repository is the public integration entry point for WLTE OpenAPI:
 
 Current scope:
 
-- HTTP APIs only
 - automatic client-credentials authentication
 - device listing and device status queries
 - device profile discovery
+- device binding, removal, and password changes
 - relay control
+- RS485 passthrough and device configuration
 - command result polling
+- WebSocket requests and events in the Go SDK
 
-WebSocket support is intentionally excluded until the protocol is finalized.
+The TypeScript and Python SDKs currently cover REST APIs. The Go SDK also provides
+WebSocket ticket acquisition, request/reply correlation, and event delivery.
 
 ## Why This Repository
 
@@ -67,6 +70,7 @@ examples/
   bruno/
 scripts/
   generate-sdk.sh
+  tag-go-sdk.sh
 ```
 
 ## SDK Coverage
@@ -75,18 +79,22 @@ Current handwritten SDK coverage:
 
 - `devices.list()`
 - `devices.get(deviceId)`
+- device add, remove, and password modification
 - `profiles.list()`
 - `relays.set(deviceId, { index, on })`
 - `relays.jog(deviceId, { index })`
 - `commands.getResult(commandId)` or `commands.get_result(command_id)`
+- Go: `client.WebSocket.Connect(...)`
 
 Shared SDK behavior:
 
 - automatic client-credentials token flow
 - in-memory token caching
+- concurrent token request coalescing
 - refresh-before-expiry where possible
 - single retry on `401 AUTH_EXPIRED`
 - unified API error handling
+- request tracing through the SDK error `requestId`
 - `429 RATE_LIMITED` surfaced through SDK error types
 
 ## Development

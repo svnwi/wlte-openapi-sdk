@@ -1,7 +1,5 @@
 # TypeScript SDK
 
-The TypeScript SDK is the first supported WLTE OpenAPI SDK.
-
 ## Local Integration
 
 Use the TypeScript SDK from this repository for now. Registry publishing is intentionally not enabled yet.
@@ -27,6 +25,8 @@ const client = new WlteClient({
 const devices = await client.devices.list({ page: 1, pageSize: 50 })
 const profiles = await client.profiles.list()
 const device = await client.devices.get(deviceId)
+await client.devices.add({ deviceId, password: '1234', name: 'Demo' })
+await client.devices.modifyPassword(deviceId, { oldPassword: '1234', newPassword: '5678' })
 const command = await client.relays.set(deviceId, { index: 1, on: true, idempotencyKey: 'unique-key' })
 const result = await client.commands.getResult(command.id)
 ```
@@ -37,9 +37,11 @@ The import path depends on how you wire `sdk/typescript` into your own workspace
 
 - Requests tokens automatically with client credentials.
 - Caches tokens in memory only.
+- Coalesces concurrent token requests and refreshes.
 - Refreshes before expiry when possible.
 - Retries once after `401 AUTH_EXPIRED`.
 - Raises `WlteApiError` for HTTP and business errors.
+- Preserves the server `requestId` on `WlteApiError`.
 - Exposes `retryAfter` for rate limit responses when provided.
 
 ## Generation
@@ -61,7 +63,7 @@ npm run example:get-device
 npm run example:control-relay
 ```
 
-## WebSocket Status
+## WebSocket Coverage
 
-WebSocket support is not included in the current SDK version.
-It will be added after the WLTE OpenAPI WebSocket protocol is finalized.
+This package currently provides REST APIs only. Go services can use the Go SDK
+when WebSocket requests and events are required.

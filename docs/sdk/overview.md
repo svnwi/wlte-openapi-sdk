@@ -24,10 +24,12 @@ The current handwritten SDK layer covers:
 - automatic client-credentials token flow
 - `devices.list()`
 - `devices.get(deviceId)`
+- device add, remove, and password modification
 - `profiles.list()`
 - `relays.set(...)`
 - `relays.jog(...)`
 - `commands.getResult(...)` or `commands.get_result(...)`
+- Go WebSocket sessions, requests, and events
 
 ## Authentication Behavior
 
@@ -35,9 +37,21 @@ All three SDKs currently behave the same way:
 
 - request access tokens automatically
 - cache tokens in memory only
+- coalesce concurrent token refreshes
 - refresh before expiry when possible
 - retry once after `401 AUTH_EXPIRED`
+- retain the server `requestId` on API errors
 - expose `429 RATE_LIMITED` details through the SDK error type
+
+## WebSocket Coverage
+
+The Go SDK supports WebSocket connections through `client.WebSocket`. It obtains a
+short-lived ticket using the same authenticated client, connects without exposing
+the ticket to application code, correlates concurrent replies by `requestId`, and
+delivers server events through a bounded channel.
+
+The TypeScript and Python SDKs currently provide REST APIs only. Do not assume the
+three SDKs have identical WebSocket coverage.
 
 ## Recommended Repository Path
 
