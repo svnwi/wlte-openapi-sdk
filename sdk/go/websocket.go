@@ -31,6 +31,9 @@ const (
 	WebSocketTopicDeviceStateChanged      = "device.state.changed"
 	WebSocketTopicDevicePowerLost         = "device.power.lost"
 	WebSocketTopicDeviceRS485Received     = "device.rs485.received"
+
+	WebSocketStateChangeRelay        = "relay"
+	WebSocketStateChangeDigitalInput = "digitalInput"
 )
 
 var ErrWebSocketEventBufferFull = errors.New("wlte websocket event buffer is full")
@@ -157,13 +160,18 @@ type WebSocketDeviceConnectionEvent struct {
 	OccurredAt string `json:"occurredAt,omitempty"`
 }
 
+type WebSocketStateChange struct {
+	Type    string `json:"type"`
+	Indexes []int  `json:"indexes"`
+}
+
 type WebSocketDeviceStateChangedEvent struct {
-	DeviceID       string       `json:"deviceId"`
-	OccurredAt     string       `json:"occurredAt,omitempty"`
-	Reason         string       `json:"reason,omitempty"`
-	CorrelationID  string       `json:"correlationId,omitempty"`
-	Peripherals    *Peripherals `json:"peripherals,omitempty"`
-	StateUpdatedAt string       `json:"stateUpdatedAt,omitempty"`
+	DeviceID       string                 `json:"deviceId"`
+	OccurredAt     string                 `json:"occurredAt,omitempty"`
+	Changes        []WebSocketStateChange `json:"changes,omitempty"`
+	CorrelationID  string                 `json:"correlationId,omitempty"`
+	Peripherals    *Peripherals           `json:"peripherals,omitempty"`
+	StateUpdatedAt string                 `json:"stateUpdatedAt,omitempty"`
 }
 
 type WebSocketDevicePowerLostEvent struct {

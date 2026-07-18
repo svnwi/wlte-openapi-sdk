@@ -2,6 +2,7 @@ package wlteopenapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -143,6 +144,27 @@ func TestWebSocketSessionReusesSDKAuthAndDispatchesEvents(t *testing.T) {
 func writeJSONResponse(w http.ResponseWriter, body string) {
 	w.Header().Set("Content-Type", "application/json")
 	_, _ = w.Write([]byte(body))
+}
+
+func TestWebSocketDeviceStateChangedEventDecodesChanges(t *testing.T) {
+	event := WebSocketEvent{Data: json.RawMessage(`{
+		"deviceId":"device-1",
+		"changes":[
+			{"type":"relay","indexes":[1,3]},
+			{"type":"digitalInput","indexes":[2]}
+		]
+	}`)}
+
+	var data WebSocketDeviceStateChangedEvent
+	if err := event.Decode(&data); err != nil {
+		t.Fatal(err)
+	}
+	if len(data.Changes) != 2 || data.Changes[0].Type != WebSocketStateChangeRelay || data.Changes[1].Type != WebSocketStateChangeDigitalInput {
+		t.Fatalf("unexpected changes: %+v", data.Changes)
+	}
+	if data.Changes[0].Indexes[1] != 3 {
+		t.Fatalf("unexpected event data: %+v", data)
+	}
 }
 
 func TestWebSocketEventBufferOverflowClosesSession(t *testing.T) {
