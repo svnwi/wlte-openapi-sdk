@@ -475,6 +475,7 @@ components:
         - INVALID_DEVICE_PASSWORD
         - COMMAND_NOT_FOUND
         - COMMAND_REJECTED
+        - DEVICE_BUSY
         - RATE_LIMITED
         - INTERNAL_ERROR
     TokenRequest:
