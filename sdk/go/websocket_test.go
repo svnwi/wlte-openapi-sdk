@@ -105,6 +105,13 @@ func TestWebSocketSessionReusesSDKAuthAndDispatchesEvents(t *testing.T) {
 	if err := session.Ping(ctx); err != nil {
 		t.Fatal(err)
 	}
+	reply, err := session.RequestWithID(ctx, "caller-request-1", WebSocketTopicSessionPing, map[string]any{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reply.RequestID != "caller-request-1" {
+		t.Fatalf("unexpected caller request ID: %q", reply.RequestID)
+	}
 	device, err := session.GetDeviceState(ctx, "device-1")
 	if err != nil {
 		t.Fatal(err)

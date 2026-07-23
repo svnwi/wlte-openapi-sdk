@@ -232,10 +232,19 @@ func newWebSocketSession(conn *websocket.Conn, eventBuffer int) *WebSocketSessio
 }
 
 func (s *WebSocketSession) Request(ctx context.Context, topic string, data any) (WebSocketReply, error) {
+	return s.RequestWithID(ctx, "sdk_"+randomRequestID(), topic, data)
+}
+
+// RequestWithID sends a request using a caller-provided correlation ID. It is
+// useful for protocol observers that need to expose the outbound request before
+// its reply arrives. Most callers should continue to use Request.
+func (s *WebSocketSession) RequestWithID(ctx context.Context, requestID, topic string, data any) (WebSocketReply, error) {
+	if strings.TrimSpace(requestID) == "" {
+		return WebSocketReply{}, fmt.Errorf("WebSocket request ID is required")
+	}
 	if strings.TrimSpace(topic) == "" {
 		return WebSocketReply{}, fmt.Errorf("WebSocket topic is required")
 	}
-	requestID := "sdk_" + randomRequestID()
 	replyCh := make(chan WebSocketReply, 1)
 
 	s.pendingMu.Lock()
@@ -244,6 +253,10 @@ func (s *WebSocketSession) Request(ctx context.Context, topic string, data any) 
 		s.pendingMu.Unlock()
 		return WebSocketReply{}, s.closedError()
 	default:
+	}
+	if _, exists := s.pending[requestID]; exists {
+		s.pendingMu.Unlock()
+		return WebSocketReply{}, fmt.Errorf("WebSocket request ID %q is already pending", requestID)
 	}
 	s.pending[requestID] = replyCh
 	s.pendingMu.Unlock()
