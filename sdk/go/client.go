@@ -81,6 +81,12 @@ func NewClient(options ClientOptions) (*Client, error) {
 	return client, nil
 }
 
+// Authorization returns the current API Client metadata without exposing its
+// access token or client secret. It shares the normal token cache and refresh.
+func (c *Client) Authorization(ctx context.Context) (AuthorizationInfo, error) {
+	return c.auth.authorization(ctx)
+}
+
 func (c *Client) request(ctx context.Context, method, path string, query map[string]string, headers map[string]string, body any, out any) error {
 	token, err := c.auth.getToken(ctx, "")
 	if err != nil {

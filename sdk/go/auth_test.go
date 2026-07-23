@@ -118,3 +118,31 @@ func TestAuthManagerRejectsInvalidTokenResponse(t *testing.T) {
 		t.Fatal("expected invalid token response error")
 	}
 }
+
+func TestAuthManagerReturnsCopiedAuthorizationMetadata(t *testing.T) {
+	requester := tokenRequesterFunc(func(_ context.Context, _, _ string, _ map[string]string, _ map[string]string, _ any, out any) error {
+		token := out.(*TokenResponse)
+		token.AccessToken = "token"
+		token.ExpiresIn = 3600
+		token.ClientID = "client-from-response"
+		token.Scopes = []string{"device:read", "device:manage"}
+		return nil
+	})
+	auth := newAuthManager("configured-client", "secret", time.Minute, requester)
+
+	info, err := auth.authorization(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.ClientID != "client-from-response" || !info.HasScope("device:manage") {
+		t.Fatalf("unexpected authorization metadata: %+v", info)
+	}
+	info.Scopes[0] = "mutated"
+	second, err := auth.authorization(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if second.Scopes[0] != "device:read" {
+		t.Fatalf("authorization scopes leaked mutable storage: %+v", second.Scopes)
+	}
+}

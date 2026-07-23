@@ -20,6 +20,21 @@ type TokenResponse struct {
 	Scopes      []string `json:"scopes"`
 }
 
+// AuthorizationInfo contains non-secret metadata for the current API Client.
+type AuthorizationInfo struct {
+	ClientID string   `json:"clientId"`
+	Scopes   []string `json:"scopes"`
+}
+
+func (i AuthorizationInfo) HasScope(scope string) bool {
+	for _, candidate := range i.Scopes {
+		if candidate == scope {
+			return true
+		}
+	}
+	return false
+}
+
 type Pagination struct {
 	Page       int  `json:"page"`
 	PageSize   int  `json:"pageSize"`

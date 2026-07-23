@@ -19,6 +19,8 @@ type authManager struct {
 	requester     tokenRequester
 	accessToken   string
 	refreshAt     time.Time
+	clientIDInfo  string
+	scopes        []string
 	refresh       *tokenRefresh
 }
 
@@ -90,6 +92,11 @@ func (a *authManager) getToken(ctx context.Context, rejectedToken string) (strin
 	if err == nil {
 		a.accessToken = token.AccessToken
 		a.refreshAt = tokenRefreshAt(now, token.ExpiresIn, a.refreshBuffer)
+		a.clientIDInfo = token.ClientID
+		if a.clientIDInfo == "" {
+			a.clientIDInfo = a.clientID
+		}
+		a.scopes = append(a.scopes[:0], token.Scopes...)
 	}
 	refresh.err = err
 	a.refresh = nil
@@ -99,6 +106,18 @@ func (a *authManager) getToken(ctx context.Context, rejectedToken string) (strin
 		return "", err
 	}
 	return token.AccessToken, nil
+}
+
+func (a *authManager) authorization(ctx context.Context) (AuthorizationInfo, error) {
+	if _, err := a.getToken(ctx, ""); err != nil {
+		return AuthorizationInfo{}, err
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return AuthorizationInfo{
+		ClientID: a.clientIDInfo,
+		Scopes:   append([]string(nil), a.scopes...),
+	}, nil
 }
 
 func tokenRefreshAt(now time.Time, expiresIn int, configuredBuffer time.Duration) time.Time {
