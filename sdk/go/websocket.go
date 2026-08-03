@@ -30,6 +30,7 @@ const (
 	WebSocketTopicDeviceConnectionOffline = "device.connection.offline"
 	WebSocketTopicDeviceStateChanged      = "device.state.changed"
 	WebSocketTopicDevicePowerLost         = "device.power.lost"
+	WebSocketTopicDevicePowerRestored     = "device.power.restored"
 	WebSocketTopicDeviceRS485Received     = "device.rs485.received"
 
 	WebSocketStateChangeRelay        = "relay"
@@ -178,6 +179,11 @@ type WebSocketDevicePowerLostEvent struct {
 	DeviceID   string `json:"deviceId"`
 	OccurredAt string `json:"occurredAt,omitempty"`
 	Message    string `json:"message,omitempty"`
+}
+
+type WebSocketDevicePowerRestoredEvent struct {
+	DeviceID   string `json:"deviceId"`
+	OccurredAt string `json:"occurredAt,omitempty"`
 }
 
 type WebSocketRS485ReceivedEvent struct {

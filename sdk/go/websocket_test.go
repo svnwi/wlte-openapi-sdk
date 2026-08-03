@@ -174,6 +174,21 @@ func TestWebSocketDeviceStateChangedEventDecodesChanges(t *testing.T) {
 	}
 }
 
+func TestWebSocketDevicePowerRestoredEventDecodes(t *testing.T) {
+	event := WebSocketEvent{Topic: WebSocketTopicDevicePowerRestored, Data: json.RawMessage(`{
+		"deviceId":"device-1",
+		"occurredAt":"2026-08-01T01:00:00Z"
+	}`)}
+
+	var data WebSocketDevicePowerRestoredEvent
+	if err := event.Decode(&data); err != nil {
+		t.Fatal(err)
+	}
+	if data.DeviceID != "device-1" || data.OccurredAt != "2026-08-01T01:00:00Z" {
+		t.Fatalf("unexpected power restored event: %+v", data)
+	}
+}
+
 func TestWebSocketEventBufferOverflowClosesSession(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /wlte/v1/auth/token", func(w http.ResponseWriter, _ *http.Request) {
